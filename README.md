@@ -87,8 +87,10 @@ coaching_marketplace/
 ## Setup
 
 ### 1. Clone & create a virtual environment
+git clone https://github.com/tyagirtk-dev/FindCoching.git
 
 ```bash
+
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
