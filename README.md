@@ -213,6 +213,6 @@ verified payment before it's credited to the teacher's wallet.
 
 ## Default Super Admin
 
-Created by `seed.py` from your `.env` values (`ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+Created by `seed.py` from your `.env` values (`admin@example.com` / `ChangeMe123!`).
 Change the password after first login — there's no in-app UI for that yet, so
 update it via a Python shell or a future admin profile page.
