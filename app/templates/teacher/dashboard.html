@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard — {{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="profile-card d-flex align-items-center gap-3 mb-3">
+  {% if profile and profile.photo_path %}
+  <img src="{{ url_for('static', filename='uploads/' + profile.photo_path) }}" class="avatar-ring" alt="">
+  {% else %}
+  <div class="avatar-ring">{{ current_user.name[0]|upper }}</div>
+  {% endif %}
+  <div class="flex-fill">
+    <div class="fw-bold fs-5">Hi, {{ current_user.name }} 👋</div>
+    <div class="small opacity-90">
+      {% if profile %}
+        <i class="bi bi-book"></i> {{ profile.subjects }}
+      {% else %}
+        Complete your profile to start teaching
+      {% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('teacher.profile') }}" class="icon-btn bg-white bg-opacity-25 border-0 text-white">
+    <i class="bi bi-pencil"></i>
+  </a>
+</div>
+
+{% if profile and profile.status.value == "pending" %}
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="bi bi-hourglass-split fs-5"></i>
+  <div class="small">Your profile is still pending Admin approval. You'll be notified once it's reviewed.</div>
+</div>
+{% elif profile and profile.status.value == "suspended" %}
+<div class="alert alert-danger d-flex align-items-center gap-2">
+  <i class="bi bi-exclamation-octagon fs-5"></i>
+  <div class="small">Your profile has been suspended. Contact support for details.</div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-icon bg-warning-soft"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-value">{{ pending_requests }}</div>
+      <div class="stat-label">Hire Requests</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-icon bg-brand"><i class="bi bi-people"></i></div>
+      <div class="stat-value">{{ active_students }}</div>
+      <div class="stat-label">Active Students</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-icon bg-success-soft"><i class="bi bi-cash-coin"></i></div>
+      <div class="stat-value">₹{{ wallet.pending_balance if wallet else "0.00" }}</div>
+      <div class="stat-label">Pending Balance</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card">
+      <div class="stat-icon bg-info-soft"><i class="bi bi-graph-up-arrow"></i></div>
+      <div class="stat-value">₹{{ wallet.total_earned if wallet else "0.00" }}</div>
+      <div class="stat-label">Total Earned</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-heading">Quick Actions</div>
+<div class="quick-actions mb-4">
+  <a href="{{ url_for('teacher.hire_requests') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-inbox"></i></span> Requests
+  </a>
+  <a href="{{ url_for('teacher.my_students') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-people"></i></span> Students
+  </a>
+  <a href="{{ url_for('teacher.mark_attendance') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-calendar-check"></i></span> Attendance
+  </a>
+  <a href="{{ url_for('teacher.wallet') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-wallet2"></i></span> Wallet
+  </a>
+  <a href="{{ url_for('teacher.reviews') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-star"></i></span> Reviews
+  </a>
+  <a href="{{ url_for('chat.inbox') }}" class="quick-action card-tap">
+    <span class="qa-icon"><i class="bi bi-chat-dots"></i></span> Messages
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card p-3 h-100">
+      <div class="section-heading mb-2">Wallet Snapshot</div>
+      <div class="d-flex justify-content-between small mb-2">
+        <span class="text-muted">Pending Balance</span>
+        <span class="fw-bold">₹{{ wallet.pending_balance if wallet else "0.00" }}</span>
+      </div>
+      <div class="d-flex justify-content-between small mb-2">
+        <span class="text-muted">Paid Out</span>
+        <span class="fw-bold">₹{{ wallet.paid_balance if wallet else "0.00" }}</span>
+      </div>
+      <div class="d-flex justify-content-between small mb-3">
+        <span class="text-muted">Total Earned</span>
+        <span class="fw-bold">₹{{ wallet.total_earned if wallet else "0.00" }}</span>
+      </div>
+      <a href="{{ url_for('teacher.request_withdrawal') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-cash-stack"></i> Request Withdrawal
+      </a>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card p-3 h-100">
+      <div class="section-heading mb-2">Profile Status</div>
+      <span class="badge bg-{{ 'success' if profile and profile.status.value == 'approved' else ('danger' if profile and profile.status.value in ['rejected','suspended'] else 'warning text-dark') }} mb-2">
+        {{ profile.status.value if profile else 'unknown' }}
+      </span>
+      <p class="text-muted small mb-0">
+        {% if profile and profile.status.value == 'approved' %}
+          You're verified and visible to students searching in your area.
+        {% else %}
+          Once approved, your profile becomes visible to nearby students.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

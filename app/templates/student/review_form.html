@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Review {{ teacher.user.name }} — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 500px; margin: auto;">
+  <h4 class="mb-3">Review {{ teacher.user.name }}</h4>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.rating.label(class="form-label") }}
+      {{ form.rating(class="form-control", min=1, max=5) }}
+    </div>
+    <div class="mb-3">
+      {{ form.comment.label(class="form-label") }}
+      {{ form.comment(class="form-control", rows="4") }}
+    </div>
+    <button type="submit" class="btn btn-primary w-100">{{ 'Update Review' if existing_review else 'Submit Review' }}</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}SMTP Settings — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 600px;">
+  <h4 class="mb-3">SMTP Settings</h4>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label class="form-label">SMTP Host</label>
+      <input type="text" name="SMTP_HOST" class="form-control" value="{{ values.SMTP_HOST }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">SMTP Port</label>
+      <input type="text" name="SMTP_PORT" class="form-control" value="{{ values.SMTP_PORT }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">SMTP Username</label>
+      <input type="text" name="SMTP_USERNAME" class="form-control" value="{{ values.SMTP_USERNAME }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">SMTP Password</label>
+      <input type="password" name="SMTP_PASSWORD" class="form-control" value="{{ values.SMTP_PASSWORD }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Sender Email</label>
+      <input type="email" name="SMTP_SENDER_EMAIL" class="form-control" value="{{ values.SMTP_SENDER_EMAIL }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Sender Name</label>
+      <input type="text" name="SMTP_SENDER_NAME" class="form-control" value="{{ values.SMTP_SENDER_NAME }}">
+    </div>
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="SMTP_USE_TLS" class="form-check-input" value="True" {% if values.SMTP_USE_TLS == "True" %}checked{% endif %}>
+      <label class="form-check-label">Use TLS</label>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Save Settings</button>
+  </form>
+</div>
+{% endblock %}

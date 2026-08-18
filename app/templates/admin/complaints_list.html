@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Complaints — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Complaints</h4>
+<div class="row g-3">
+  {% for c in pagination.items %}
+  <div class="col-md-6">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between">
+        <strong>{{ c.subject }}</strong>
+        <span class="badge bg-secondary">{{ c.status.value }}</span>
+      </div>
+      <div class="small text-muted mb-1">{{ c.student.user.name }} · {{ c.created_at.strftime('%d %b %Y') }}</div>
+      <div class="small mb-2">{{ c.description }}</div>
+      <form method="POST" action="{{ url_for('admin.respond_complaint', complaint_id=c.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea name="response" class="form-control form-control-sm mb-2" placeholder="Response" rows="2">{{ c.admin_response or '' }}</textarea>
+        <div class="d-flex gap-2">
+          <select name="status" class="form-select form-select-sm">
+            <option value="open" {{ 'selected' if c.status.value == 'open' }}>Open</option>
+            <option value="in_review" {{ 'selected' if c.status.value == 'in_review' }}>In Review</option>
+            <option value="resolved" {{ 'selected' if c.status.value == 'resolved' }}>Resolved</option>
+            <option value="closed" {{ 'selected' if c.status.value == 'closed' }}>Closed</option>
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary">Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="card p-4 text-center text-muted">No complaints yet.</div></div>
+  {% endfor %}
+</div>
+{% if pagination.pages > 1 %}
+<nav class="mt-3"><ul class="pagination">
+  {% for p in pagination.iter_pages() %}
+    {% if p %}<li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for('admin.complaints_list', page=p) }}">{{ p }}</a></li>
+    {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+  {% endfor %}
+</ul></nav>
+{% endif %}
+{% endblock %}

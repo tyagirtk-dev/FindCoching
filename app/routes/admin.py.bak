@@ -1,0 +1,647 @@
+from datetime import datetime
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file
+from flask_login import login_required, current_user
+from sqlalchemy.orm import joinedload
+
+from app import db
+from app.utils.decorators import super_admin_required
+from app.models.user import User, RoleEnum
+from app.models.teacher_profile import TeacherProfile, TeacherStatus
+from app.models.student_profile import StudentProfile
+from app.models.payment_transaction import PaymentTransaction, PaymentStatus
+from app.models.payment_settings import PaymentSettings
+from app.models.payment_verification import PaymentVerification, VerificationAction
+from app.models.refund import Refund, RefundStatus
+from app.models.withdrawal import WithdrawalRequest, WithdrawalStatus
+from app.models.hire_request import HireRequest
+from app.models.attendance import Attendance
+from app.models.wallet import Wallet
+from app.models.announcement import Announcement
+from app.models.contact_request import ContactRequest, ContactStatus
+from app.models.complaint import Complaint, ComplaintStatus
+from app.models.audit_log import AuditLog
+from app.forms.marketplace_forms import AnnouncementForm, WebsiteSettingsForm, PaymentSettingsForm
+from app.services.settings_service import get_setting, set_setting
+from app.services.notification_service import notify, notify_many
+from app.services.wallet_service import credit_payment, deduct_for_withdrawal, debit_for_refund
+from app.services.report_service import export_table_excel, export_table_pdf
+from app.utils.file_upload import save_upload, InvalidFileError
+
+admin_bp = Blueprint("admin", __name__, template_folder="../templates/admin")
+
+
+@admin_bp.route("/dashboard")
+@login_required
+@super_admin_required
+def dashboard():
+    stats = {
+        "total_students": StudentProfile.query.count(),
+        "total_teachers": TeacherProfile.query.count(),
+        "pending_teachers": TeacherProfile.query.filter_by(status=TeacherStatus.PENDING).count(),
+        "pending_payments": PaymentTransaction.query.filter_by(status=PaymentStatus.PENDING).count(),
+        "pending_withdrawals": WithdrawalRequest.query.filter_by(status=WithdrawalStatus.REQUESTED).count(),
+    }
+    return render_template("admin/dashboard.html", stats=stats)
+
+
+@admin_bp.route("/teachers/verification")
+@login_required
+@super_admin_required
+def teacher_verification():
+    pending = TeacherProfile.query.filter_by(status=TeacherStatus.PENDING).order_by(TeacherProfile.created_at.desc()).all()
+    return render_template("admin/teacher_verification.html", teachers=pending)
+
+
+@admin_bp.route("/teachers/<int:teacher_id>/approve", methods=["POST"])
+@login_required
+@super_admin_required
+def approve_teacher(teacher_id):
+    profile = TeacherProfile.query.get_or_404(teacher_id)
+    profile.status = TeacherStatus.APPROVED
+    profile.approved_at = datetime.utcnow()
+    profile.approved_by_id = current_user.id
+    AuditLog.log(current_user.id, "teacher_approved", details=f"teacher_id={teacher_id}")
+    db.session.commit()
+    flash(f"{profile.user.name} approved.", "success")
+    return redirect(url_for("admin.teacher_verification"))
+
+
+@admin_bp.route("/teachers/<int:teacher_id>/reject", methods=["POST"])
+@login_required
+@super_admin_required
+def reject_teacher(teacher_id):
+    profile = TeacherProfile.query.get_or_404(teacher_id)
+    profile.status = TeacherStatus.REJECTED
+    profile.rejection_reason = request.form.get("reason", "").strip()
+    AuditLog.log(current_user.id, "teacher_rejected", details=f"teacher_id={teacher_id}")
+    db.session.commit()
+    flash(f"{profile.user.name} rejected.", "info")
+    return redirect(url_for("admin.teacher_verification"))
+
+
+@admin_bp.route("/teachers/<int:teacher_id>/suspend", methods=["POST"])
+@login_required
+@super_admin_required
+def suspend_teacher(teacher_id):
+    profile = TeacherProfile.query.get_or_404(teacher_id)
+    profile.status = TeacherStatus.SUSPENDED
+    AuditLog.log(current_user.id, "teacher_suspended", details=f"teacher_id={teacher_id}")
+    db.session.commit()
+    flash(f"{profile.user.name} suspended.", "warning")
+    return redirect(request.referrer or url_for("admin.dashboard"))
+
+
+@admin_bp.route("/settings/smtp", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def smtp_settings():
+    keys = ["SMTP_HOST", "SMTP_PORT", "SMTP_USERNAME", "SMTP_PASSWORD", "SMTP_SENDER_EMAIL", "SMTP_SENDER_NAME", "SMTP_USE_TLS"]
+    if request.method == "POST":
+        for key in keys:
+            set_setting(key, request.form.get(key, ""))
+        AuditLog.log(current_user.id, "smtp_settings_updated")
+        db.session.commit()
+        flash("SMTP settings updated.", "success")
+        return redirect(url_for("admin.smtp_settings"))
+
+    values = {key: get_setting(key, "") for key in keys}
+    return render_template("admin/smtp_settings.html", values=values)
+
+
+@admin_bp.route("/settings/radius", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def radius_settings():
+    if request.method == "POST":
+        set_setting("SEARCH_RADIUS_KM", request.form.get("radius_km", "5"))
+        AuditLog.log(current_user.id, "radius_setting_updated")
+        db.session.commit()
+        flash("Default search radius updated.", "success")
+        return redirect(url_for("admin.radius_settings"))
+    radius_km = get_setting("SEARCH_RADIUS_KM", "5")
+    return render_template("admin/radius_settings.html", radius_km=radius_km)
+
+
+@admin_bp.route("/settings/commission", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def commission_settings():
+    if request.method == "POST":
+        set_setting("COMMISSION_PERCENT", request.form.get("commission_percent", "10"))
+        AuditLog.log(current_user.id, "commission_setting_updated")
+        db.session.commit()
+        flash("Commission percentage updated.", "success")
+        return redirect(url_for("admin.commission_settings"))
+    commission_percent = get_setting("COMMISSION_PERCENT", "10")
+    return render_template("admin/commission_settings.html", commission_percent=commission_percent)
+
+
+@admin_bp.route("/students")
+@login_required
+@super_admin_required
+def students_list():
+    page = request.args.get("page", 1, type=int)
+    pagination = StudentProfile.query.options(joinedload(StudentProfile.user)).join(User).order_by(User.created_at.desc()).paginate(page=page, per_page=20)
+    return render_template("admin/students_list.html", pagination=pagination)
+
+
+@admin_bp.route("/teachers")
+@login_required
+@super_admin_required
+def teachers_list():
+    page = request.args.get("page", 1, type=int)
+    pagination = TeacherProfile.query.options(joinedload(TeacherProfile.user)).join(User).order_by(User.created_at.desc()).paginate(page=page, per_page=20)
+    return render_template("admin/teachers_list.html", pagination=pagination)
+
+
+@admin_bp.route("/logs")
+@login_required
+@super_admin_required
+def logs():
+    page = request.args.get("page", 1, type=int)
+    pagination = AuditLog.query.order_by(AuditLog.created_at.desc()).paginate(page=page, per_page=50)
+    return render_template("admin/logs.html", pagination=pagination)
+
+
+# --------------------------------------------------------------------------
+# Hire request monitoring
+# --------------------------------------------------------------------------
+@admin_bp.route("/hires")
+@login_required
+@super_admin_required
+def hires_list():
+    page = request.args.get("page", 1, type=int)
+    pagination = HireRequest.query.options(
+        joinedload(HireRequest.student).joinedload(StudentProfile.user),
+        joinedload(HireRequest.teacher).joinedload(TeacherProfile.user),
+    ).order_by(HireRequest.created_at.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/hires_list.html", pagination=pagination)
+
+
+# --------------------------------------------------------------------------
+# Attendance monitoring
+# --------------------------------------------------------------------------
+@admin_bp.route("/attendance")
+@login_required
+@super_admin_required
+def attendance_list():
+    page = request.args.get("page", 1, type=int)
+    pagination = Attendance.query.options(
+        joinedload(Attendance.teacher).joinedload(TeacherProfile.user),
+        joinedload(Attendance.student).joinedload(StudentProfile.user),
+    ).order_by(Attendance.date.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/attendance_list.html", pagination=pagination)
+
+
+# --------------------------------------------------------------------------
+# Payments
+# --------------------------------------------------------------------------
+@admin_bp.route("/payments")
+@login_required
+@super_admin_required
+def payments_list():
+    status_filter = request.args.get("status", "")
+    page = request.args.get("page", 1, type=int)
+    query = PaymentTransaction.query
+    if status_filter in ("pending", "verified", "rejected", "failed", "refunded"):
+        query = query.filter_by(status=PaymentStatus(status_filter))
+    pagination = query.options(
+        joinedload(PaymentTransaction.student).joinedload(StudentProfile.user),
+        joinedload(PaymentTransaction.teacher).joinedload(TeacherProfile.user),
+    ).order_by(PaymentTransaction.created_at.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/payments_list.html", pagination=pagination, status_filter=status_filter)
+
+
+@admin_bp.route("/payments/<int:payment_id>/verify", methods=["POST"])
+@login_required
+@super_admin_required
+def verify_payment(payment_id):
+    payment = PaymentTransaction.query.get_or_404(payment_id)
+    if payment.status != PaymentStatus.PENDING:
+        flash("This payment has already been processed.", "warning")
+        return redirect(url_for("admin.payments_list"))
+
+    payment.status = PaymentStatus.VERIFIED
+    payment.verified_by_id = current_user.id
+    payment.verified_at = datetime.utcnow()
+    credit_payment(payment.teacher_id, payment.net_to_teacher, reference=f"payment#{payment.id}")
+    db.session.add(PaymentVerification(
+        payment_transaction_id=payment.id, admin_id=current_user.id, action=VerificationAction.APPROVED,
+    ))
+    db.session.flush()
+
+    notify(payment.teacher.user_id, "Payment Verified",
+           f"A payment of Rs. {payment.amount} was verified. Rs. {payment.net_to_teacher} credited to your wallet.",
+           link=url_for("teacher.wallet"))
+    notify(payment.student.user_id, "Payment Verified",
+           f"Your payment of Rs. {payment.amount} has been verified.")
+
+    AuditLog.log(current_user.id, "payment_verified", details=f"payment_id={payment_id}")
+    db.session.commit()
+    flash("Payment verified and teacher wallet credited.", "success")
+    return redirect(url_for("admin.payments_list"))
+
+
+@admin_bp.route("/payments/<int:payment_id>/reject", methods=["POST"])
+@login_required
+@super_admin_required
+def reject_payment(payment_id):
+    payment = PaymentTransaction.query.get_or_404(payment_id)
+    if payment.status != PaymentStatus.PENDING:
+        flash("This payment has already been processed.", "warning")
+        return redirect(url_for("admin.payments_list"))
+
+    payment.status = PaymentStatus.REJECTED
+    payment.rejection_reason = request.form.get("reason", "").strip()
+    payment.verified_by_id = current_user.id
+    payment.verified_at = datetime.utcnow()
+    db.session.add(PaymentVerification(
+        payment_transaction_id=payment.id, admin_id=current_user.id, action=VerificationAction.REJECTED,
+        notes=payment.rejection_reason,
+    ))
+
+    notify(payment.student.user_id, "Payment Rejected",
+           f"Your payment of Rs. {payment.amount} was rejected: {payment.rejection_reason or 'contact support'}")
+
+    AuditLog.log(current_user.id, "payment_rejected", details=f"payment_id={payment_id}")
+    db.session.commit()
+    flash("Payment rejected.", "info")
+    return redirect(url_for("admin.payments_list"))
+
+
+@admin_bp.route("/payments/<int:payment_id>/refund", methods=["POST"])
+@login_required
+@super_admin_required
+def refund_payment(payment_id):
+    payment = PaymentTransaction.query.get_or_404(payment_id)
+    if payment.status != PaymentStatus.VERIFIED:
+        flash("Only a verified payment can be refunded.", "warning")
+        return redirect(url_for("admin.payments_list"))
+
+    reason = request.form.get("reason", "").strip()
+    payment.status = PaymentStatus.REFUNDED
+
+    debit_for_refund(payment.teacher_id, payment.net_to_teacher, reference=f"refund#payment#{payment.id}")
+    db.session.add(Refund(
+        payment_transaction_id=payment.id, amount=payment.amount, reason=reason,
+        status=RefundStatus.COMPLETED, processed_by_id=current_user.id, processed_at=datetime.utcnow(),
+    ))
+    db.session.add(PaymentVerification(
+        payment_transaction_id=payment.id, admin_id=current_user.id, action=VerificationAction.REFUNDED, notes=reason,
+    ))
+
+    notify(payment.student.user_id, "Payment Refunded",
+           f"Your payment of Rs. {payment.amount} has been refunded: {reason or 'contact support for details'}")
+    notify(payment.teacher.user_id, "Payment Refunded",
+           f"Rs. {payment.net_to_teacher} was reversed from your wallet due to a refund on payment #{payment.id}.")
+
+    AuditLog.log(current_user.id, "payment_refunded", details=f"payment_id={payment_id} reason={reason}")
+    db.session.commit()
+    flash("Payment refunded and teacher wallet adjusted.", "success")
+    return redirect(url_for("admin.payments_list"))
+
+
+@admin_bp.route("/settings/payments", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def payment_settings():
+    settings = PaymentSettings.get_solo()
+    form = PaymentSettingsForm(obj=None)
+
+    if request.method == "GET":
+        form.upi_enabled.data = "1" if settings.upi_enabled else "0"
+        form.gpay_upi_id.data = settings.gpay_upi_id
+        form.phonepe_upi_id.data = settings.phonepe_upi_id
+        form.paytm_upi_id.data = settings.paytm_upi_id
+        form.primary_upi_id.data = settings.primary_upi_id
+        form.merchant_name.data = settings.merchant_name
+        form.merchant_mobile.data = settings.merchant_mobile
+        form.payment_instructions.data = settings.payment_instructions
+        form.min_withdrawal.data = settings.min_withdrawal
+        form.max_withdrawal.data = settings.max_withdrawal
+        form.commission_percent.data = settings.commission_percent
+        form.auto_approval.data = "1" if settings.auto_approval else "0"
+        form.payment_timeout.data = settings.payment_timeout_minutes
+        form.maintenance_mode.data = "1" if settings.maintenance_mode else "0"
+
+    if form.validate_on_submit():
+        if form.max_withdrawal.data < form.min_withdrawal.data:
+            flash("Maximum withdrawal cannot be less than minimum withdrawal.", "danger")
+            return render_template("admin/payment_settings.html", form=form, settings=settings)
+
+        if form.qr_code.data:
+            try:
+                settings.qr_code_path = save_upload(form.qr_code.data, "qr_codes", {"png", "jpg", "jpeg"})
+            except InvalidFileError as e:
+                flash(str(e), "danger")
+                return render_template("admin/payment_settings.html", form=form, settings=settings)
+
+        settings.upi_enabled = form.upi_enabled.data == "1"
+        settings.gpay_upi_id = form.gpay_upi_id.data.strip() or None
+        settings.phonepe_upi_id = form.phonepe_upi_id.data.strip() or None
+        settings.paytm_upi_id = form.paytm_upi_id.data.strip() or None
+        settings.primary_upi_id = form.primary_upi_id.data.strip()
+        settings.merchant_name = form.merchant_name.data.strip()
+        settings.merchant_mobile = form.merchant_mobile.data.strip() or None
+        settings.payment_instructions = form.payment_instructions.data
+        settings.min_withdrawal = form.min_withdrawal.data
+        settings.max_withdrawal = form.max_withdrawal.data
+        settings.commission_percent = form.commission_percent.data
+        settings.auto_approval = form.auto_approval.data == "1"
+        settings.payment_timeout_minutes = form.payment_timeout.data
+        settings.maintenance_mode = form.maintenance_mode.data == "1"
+        settings.updated_by_id = current_user.id
+
+        db.session.commit()
+        AuditLog.log(current_user.id, "payment_settings_updated")
+        flash("Payment settings saved.", "success")
+        return redirect(url_for("admin.payment_settings"))
+
+    return render_template("admin/payment_settings.html", form=form, settings=settings)
+
+
+# --------------------------------------------------------------------------
+# Withdrawals
+# --------------------------------------------------------------------------
+@admin_bp.route("/withdrawals")
+@login_required
+@super_admin_required
+def withdrawals_list():
+    status_filter = request.args.get("status", "")
+    page = request.args.get("page", 1, type=int)
+    query = WithdrawalRequest.query
+    if status_filter in ("requested", "approved", "paid", "rejected"):
+        query = query.filter_by(status=WithdrawalStatus(status_filter))
+    pagination = query.options(
+        joinedload(WithdrawalRequest.teacher).joinedload(TeacherProfile.user),
+    ).order_by(WithdrawalRequest.requested_at.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/withdrawals_list.html", pagination=pagination, status_filter=status_filter)
+
+
+@admin_bp.route("/withdrawals/<int:wd_id>/approve", methods=["POST"])
+@login_required
+@super_admin_required
+def approve_withdrawal(wd_id):
+    wd = WithdrawalRequest.query.get_or_404(wd_id)
+    if wd.status != WithdrawalStatus.REQUESTED:
+        flash("This request has already been processed.", "warning")
+        return redirect(url_for("admin.withdrawals_list"))
+    wd.status = WithdrawalStatus.APPROVED
+    wd.processed_by_id = current_user.id
+    wd.processed_at = datetime.utcnow()
+    AuditLog.log(current_user.id, "withdrawal_approved", details=f"withdrawal_id={wd_id}")
+    db.session.commit()
+    notify(wd.teacher.user_id, "Withdrawal Approved", f"Your withdrawal of Rs. {wd.amount} has been approved and is being processed.")
+    db.session.commit()
+    flash("Withdrawal approved.", "success")
+    return redirect(url_for("admin.withdrawals_list"))
+
+
+@admin_bp.route("/withdrawals/<int:wd_id>/mark-paid", methods=["POST"])
+@login_required
+@super_admin_required
+def mark_withdrawal_paid(wd_id):
+    wd = WithdrawalRequest.query.get_or_404(wd_id)
+    if wd.status not in (WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED):
+        flash("This request cannot be marked paid from its current state.", "warning")
+        return redirect(url_for("admin.withdrawals_list"))
+
+    try:
+        deduct_for_withdrawal(wd.teacher_id, wd.amount, reference=f"withdrawal#{wd.id}")
+    except ValueError as e:
+        flash(str(e), "danger")
+        return redirect(url_for("admin.withdrawals_list"))
+
+    wd.status = WithdrawalStatus.PAID
+    wd.transaction_reference = request.form.get("transaction_reference", "").strip()
+    wd.processed_by_id = current_user.id
+    wd.processed_at = datetime.utcnow()
+    AuditLog.log(current_user.id, "withdrawal_paid", details=f"withdrawal_id={wd_id}")
+    db.session.commit()
+
+    notify(wd.teacher.user_id, "Withdrawal Paid", f"Your withdrawal of Rs. {wd.amount} has been paid out.")
+    db.session.commit()
+    flash("Withdrawal marked as paid.", "success")
+    return redirect(url_for("admin.withdrawals_list"))
+
+
+@admin_bp.route("/withdrawals/<int:wd_id>/reject", methods=["POST"])
+@login_required
+@super_admin_required
+def reject_withdrawal(wd_id):
+    wd = WithdrawalRequest.query.get_or_404(wd_id)
+    if wd.status != WithdrawalStatus.REQUESTED:
+        flash("This request has already been processed.", "warning")
+        return redirect(url_for("admin.withdrawals_list"))
+    wd.status = WithdrawalStatus.REJECTED
+    wd.admin_note = request.form.get("reason", "").strip()
+    wd.processed_by_id = current_user.id
+    wd.processed_at = datetime.utcnow()
+    AuditLog.log(current_user.id, "withdrawal_rejected", details=f"withdrawal_id={wd_id}")
+    db.session.commit()
+    notify(wd.teacher.user_id, "Withdrawal Rejected", f"Your withdrawal request of Rs. {wd.amount} was rejected: {wd.admin_note or 'contact support'}")
+    db.session.commit()
+    flash("Withdrawal rejected.", "info")
+    return redirect(url_for("admin.withdrawals_list"))
+
+
+# --------------------------------------------------------------------------
+# Wallet overview
+# --------------------------------------------------------------------------
+@admin_bp.route("/wallets")
+@login_required
+@super_admin_required
+def wallets_overview():
+    page = request.args.get("page", 1, type=int)
+    pagination = Wallet.query.options(
+        joinedload(Wallet.teacher_profile).joinedload(TeacherProfile.user),
+    ).join(TeacherProfile).order_by(Wallet.pending_balance.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/wallets_overview.html", pagination=pagination)
+
+
+# --------------------------------------------------------------------------
+# Announcements
+# --------------------------------------------------------------------------
+@admin_bp.route("/announcements", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def announcements():
+    form = AnnouncementForm()
+    if form.validate_on_submit():
+        ann = Announcement(
+            title=form.title.data.strip(),
+            body=form.body.data.strip(),
+            audience=form.audience.data,
+            created_by_id=current_user.id,
+        )
+        db.session.add(ann)
+        db.session.flush()
+
+        audience = form.audience.data
+        query = User.query.filter(User.role != RoleEnum.SUPER_ADMIN)
+        if audience == "teachers":
+            query = query.filter(User.role == RoleEnum.TEACHER)
+        elif audience == "students":
+            query = query.filter(User.role == RoleEnum.STUDENT)
+        recipient_ids = [u.id for u in query.all()]
+        notify_many(recipient_ids, ann.title, ann.body)
+
+        AuditLog.log(current_user.id, "announcement_created", details=f"title={ann.title}")
+        db.session.commit()
+        flash("Announcement published.", "success")
+        return redirect(url_for("admin.announcements"))
+
+    items = Announcement.query.order_by(Announcement.created_at.desc()).limit(50).all()
+    return render_template("admin/announcements.html", form=form, items=items)
+
+
+# --------------------------------------------------------------------------
+# Contact requests
+# --------------------------------------------------------------------------
+@admin_bp.route("/contact-requests")
+@login_required
+@super_admin_required
+def contact_requests():
+    page = request.args.get("page", 1, type=int)
+    pagination = ContactRequest.query.order_by(ContactRequest.created_at.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/contact_requests.html", pagination=pagination)
+
+
+@admin_bp.route("/contact-requests/<int:cr_id>/status", methods=["POST"])
+@login_required
+@super_admin_required
+def update_contact_status(cr_id):
+    cr = ContactRequest.query.get_or_404(cr_id)
+    new_status = request.form.get("status", "")
+    if new_status in ("new", "responded", "closed"):
+        cr.status = ContactStatus(new_status)
+        db.session.commit()
+        flash("Contact request updated.", "success")
+    return redirect(url_for("admin.contact_requests"))
+
+
+# --------------------------------------------------------------------------
+# Complaints
+# --------------------------------------------------------------------------
+@admin_bp.route("/complaints")
+@login_required
+@super_admin_required
+def complaints_list():
+    page = request.args.get("page", 1, type=int)
+    pagination = Complaint.query.options(
+        joinedload(Complaint.student).joinedload(StudentProfile.user),
+    ).order_by(Complaint.created_at.desc()).paginate(page=page, per_page=30)
+    return render_template("admin/complaints_list.html", pagination=pagination)
+
+
+@admin_bp.route("/complaints/<int:complaint_id>/respond", methods=["POST"])
+@login_required
+@super_admin_required
+def respond_complaint(complaint_id):
+    complaint = Complaint.query.get_or_404(complaint_id)
+    complaint.admin_response = request.form.get("response", "").strip()
+    new_status = request.form.get("status", "resolved")
+    if new_status in ("open", "in_review", "resolved", "closed"):
+        complaint.status = ComplaintStatus(new_status)
+        if complaint.status in (ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED):
+            complaint.resolved_at = datetime.utcnow()
+    db.session.commit()
+
+    notify(complaint.student.user_id, "Complaint Update", f"Your complaint '{complaint.subject}' was updated: {complaint.status.value}")
+    db.session.commit()
+
+    flash("Complaint updated.", "success")
+    return redirect(url_for("admin.complaints_list"))
+
+
+# --------------------------------------------------------------------------
+# Website settings
+# --------------------------------------------------------------------------
+@admin_bp.route("/settings/website", methods=["GET", "POST"])
+@login_required
+@super_admin_required
+def website_settings():
+    form = WebsiteSettingsForm()
+    if form.validate_on_submit():
+        set_setting("SITE_NAME", form.site_name.data.strip())
+        set_setting("UPI_PAYEE_ID", form.upi_payee_id.data.strip() if form.upi_payee_id.data else "")
+        set_setting("UPI_PAYEE_NAME", form.upi_payee_name.data.strip() if form.upi_payee_name.data else "")
+        AuditLog.log(current_user.id, "website_settings_updated")
+        db.session.commit()
+        flash("Website settings updated.", "success")
+        return redirect(url_for("admin.website_settings"))
+
+    if request.method == "GET":
+        form.site_name.data = get_setting("SITE_NAME", "LocalTutor")
+        form.upi_payee_id.data = get_setting("UPI_PAYEE_ID", "")
+        form.upi_payee_name.data = get_setting("UPI_PAYEE_NAME", "")
+    return render_template("admin/website_settings.html", form=form)
+
+
+# --------------------------------------------------------------------------
+# Reports
+# --------------------------------------------------------------------------
+@admin_bp.route("/reports")
+@login_required
+@super_admin_required
+def reports():
+    return render_template("admin/reports.html")
+
+
+def _report_dataset(report_type):
+    if report_type == "teacher-earnings":
+        headers = ["Teacher", "Email", "Pending Balance", "Paid Balance", "Total Earned"]
+        rows = [
+            [w.teacher_profile.user.name, w.teacher_profile.user.email, str(w.pending_balance), str(w.paid_balance), str(w.total_earned)]
+            for w in Wallet.query.join(TeacherProfile).all()
+        ]
+    elif report_type == "student-payments":
+        headers = ["Student", "Teacher", "Amount", "Status", "Date"]
+        rows = [
+            [p.student.user.name, p.teacher.user.name, str(p.amount), p.status.value, p.created_at.strftime("%Y-%m-%d")]
+            for p in PaymentTransaction.query.order_by(PaymentTransaction.created_at.desc()).all()
+        ]
+    elif report_type == "attendance":
+        headers = ["Teacher", "Student", "Date", "Status"]
+        rows = [
+            [a.teacher.user.name, a.student.user.name, a.date.strftime("%Y-%m-%d"), a.status.value]
+            for a in Attendance.query.order_by(Attendance.date.desc()).all()
+        ]
+    elif report_type == "withdrawals":
+        headers = ["Teacher", "Amount", "Status", "Requested At"]
+        rows = [
+            [wd.teacher.user.name, str(wd.amount), wd.status.value, wd.requested_at.strftime("%Y-%m-%d")]
+            for wd in WithdrawalRequest.query.order_by(WithdrawalRequest.requested_at.desc()).all()
+        ]
+    elif report_type == "revenue":
+        headers = ["Payment ID", "Amount", "Commission", "Net to Teacher", "Status", "Date"]
+        rows = [
+            [str(p.id), str(p.amount), str(p.commission_amount), str(p.net_to_teacher), p.status.value, p.created_at.strftime("%Y-%m-%d")]
+            for p in PaymentTransaction.query.filter_by(status=PaymentStatus.VERIFIED).order_by(PaymentTransaction.created_at.desc()).all()
+        ]
+    else:
+        return None, None
+    return headers, rows
+
+
+@admin_bp.route("/reports/export/<report_type>/<fmt>")
+@login_required
+@super_admin_required
+def export_report(report_type, fmt):
+    headers, rows = _report_dataset(report_type)
+    if headers is None:
+        flash("Unknown report type.", "danger")
+        return redirect(url_for("admin.reports"))
+
+    title = report_type.replace("-", " ").title()
+    if fmt == "xlsx":
+        buf = export_table_excel(title, headers, rows)
+        return send_file(buf, as_attachment=True, download_name=f"{report_type}.xlsx",
+                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    elif fmt == "pdf":
+        buf = export_table_pdf(title, headers, rows)
+        return send_file(buf, as_attachment=True, download_name=f"{report_type}.pdf", mimetype="application/pdf")
+    else:
+        flash("Unknown export format.", "danger")
+        return redirect(url_for("admin.reports"))

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Attendance — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Mark Attendance</h4>
+
+{% if not has_students %}
+<div class="card p-4 text-center text-muted">You need at least one active student before marking attendance.</div>
+{% else %}
+<div class="card p-4 mb-4" style="max-width: 500px;">
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.student_id.label(class="form-label") }}
+      {{ form.student_id(class="form-select") }}
+    </div>
+    <div class="mb-3">
+      {{ form.date.label(class="form-label") }}
+      {{ form.date(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.status.label(class="form-label") }}
+      {{ form.status(class="form-select") }}
+    </div>
+    <div class="mb-3">
+      {{ form.remarks.label(class="form-label") }}
+      {{ form.remarks(class="form-control") }}
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Save Attendance</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card p-3">
+  <h6 class="mb-2">Recent Records</h6>
+  <div class="table-responsive">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Date</th><th>Student</th><th>Status</th><th>Remarks</th></tr></thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.date.strftime('%d %b %Y') }}</td>
+        <td>{{ r.student.user.name }}</td>
+        <td><span class="badge bg-{{ 'success' if r.status.value == 'present' else ('danger' if r.status.value == 'absent' else 'secondary') }}">{{ r.status.value }}</span></td>
+        <td>{{ r.remarks or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-3">No records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% endblock %}

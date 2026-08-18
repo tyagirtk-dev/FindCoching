@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Student Registration — {{ site_name }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="text-center mb-3">
+      <span class="brand-mark d-inline-flex" style="width:52px;height:52px;font-size:1.4rem;"><i class="bi bi-person-fill"></i></span>
+    </div>
+    <div class="card auth-card p-4">
+      <h4 class="mb-1 fw-bold text-center">Student Registration</h4>
+      <p class="text-muted small text-center mb-3">Create your account to start finding tutors near you</p>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+            {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.mobile.label(class="form-label") }}
+            {{ form.mobile(class="form-control" + (" is-invalid" if form.mobile.errors else "")) }}
+            {% for e in form.mobile.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+            {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6"></div>
+          <div class="col-md-6">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+            {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+            {% for e in form.confirm_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="col-12">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows="2") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.state.label(class="form-label") }}
+            {{ form.state(class="form-control" + (" is-invalid" if form.state.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.city.label(class="form-label") }}
+            {{ form.city(class="form-control" + (" is-invalid" if form.city.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.pincode.label(class="form-label") }}
+            {{ form.pincode(class="form-control" + (" is-invalid" if form.pincode.errors else "")) }}
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Pin your location on the map (used for teacher radius search)</label>
+            <div id="map" style="height: 280px; border-radius: 10px;"></div>
+          </div>
+          <div class="col-md-6">
+            {{ form.latitude.label(class="form-label") }}
+            {{ form.latitude(class="form-control", id="latitude", readonly=true) }}
+          </div>
+          <div class="col-md-6">
+            {{ form.longitude.label(class="form-label") }}
+            {{ form.longitude(class="form-control", id="longitude", readonly=true) }}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.student_class.label(class="form-label") }}
+            {{ form.student_class(class="form-control" + (" is-invalid" if form.student_class.errors else "")) }}
+          </div>
+          <div class="col-md-8">
+            {{ form.subjects_required.label(class="form-label") }}
+            {{ form.subjects_required(class="form-control" + (" is-invalid" if form.subjects_required.errors else ""), placeholder="e.g. Mathematics, Physics") }}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-4 btn-lg">Create Account</button>
+      </form>
+      <p class="text-center small mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-semibold">Log in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  const defaultLat = 20.5937, defaultLng = 78.9629; // India center fallback
+  const map = L.map('map').setView([defaultLat, defaultLng], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let marker;
+  function setMarker(lat, lng) {
+    if (marker) { marker.setLatLng([lat, lng]); } else { marker = L.marker([lat, lng]).addTo(map); }
+    document.getElementById('latitude').value = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+  }
+
+  map.on('click', function (e) {
+    setMarker(e.latlng.lat, e.latlng.lng);
+  });
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      setMarker(pos.coords.latitude, pos.coords.longitude);
+    });
+  }
+</script>
+{% endblock %}

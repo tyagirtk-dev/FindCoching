@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Complaints — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Complaints</h4>
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card p-4">
+      <h6 class="mb-3">File a Complaint</h6>
+      <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.teacher_id.label(class="form-label") }}
+          {{ form.teacher_id(class="form-select") }}
+        </div>
+        <div class="mb-3">
+          {{ form.subject.label(class="form-label") }}
+          {{ form.subject(class="form-control") }}
+        </div>
+        <div class="mb-3">
+          {{ form.description.label(class="form-label") }}
+          {{ form.description(class="form-control", rows="4") }}
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit Complaint</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div class="card p-3">
+      <h6 class="mb-3">My Complaints</h6>
+      {% for c in history %}
+      <div class="border-bottom py-2">
+        <div class="d-flex justify-content-between">
+          <strong>{{ c.subject }}</strong>
+          <span class="badge bg-secondary">{{ c.status.value }}</span>
+        </div>
+        <div class="small text-muted">{{ c.created_at.strftime('%d %b %Y') }}</div>
+        <div class="small">{{ c.description }}</div>
+        {% if c.admin_response %}<div class="small mt-1 text-primary"><strong>Admin:</strong> {{ c.admin_response }}</div>{% endif %}
+      </div>
+      {% else %}
+      <p class="text-muted small mb-0">No complaints filed yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

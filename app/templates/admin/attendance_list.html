@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Attendance — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">All Attendance Records</h4>
+<div class="card p-3">
+  <div class="table-responsive">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Date</th><th>Teacher</th><th>Student</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for a in pagination.items %}
+      <tr>
+        <td>{{ a.date.strftime('%d %b %Y') }}</td>
+        <td>{{ a.teacher.user.name }}</td>
+        <td>{{ a.student.user.name }}</td>
+        <td><span class="badge bg-{{ 'success' if a.status.value == 'present' else ('danger' if a.status.value == 'absent' else 'secondary') }}">{{ a.status.value }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-4">No attendance records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% if pagination.pages > 1 %}
+<nav class="mt-3"><ul class="pagination">
+  {% for p in pagination.iter_pages() %}
+    {% if p %}<li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for('admin.attendance_list', page=p) }}">{{ p }}</a></li>
+    {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+  {% endfor %}
+</ul></nav>
+{% endif %}
+{% endblock %}

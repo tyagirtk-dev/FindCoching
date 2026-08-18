@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Wallets — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Teacher Wallets</h4>
+<div class="card p-3">
+  <div class="table-responsive">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Teacher</th><th>Pending</th><th>Paid</th><th>Total Earned</th></tr></thead>
+    <tbody>
+      {% for w in pagination.items %}
+      <tr>
+        <td>{{ w.teacher_profile.user.name }}</td>
+        <td>₹{{ w.pending_balance }}</td>
+        <td>₹{{ w.paid_balance }}</td>
+        <td>₹{{ w.total_earned }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-4">No wallets yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% if pagination.pages > 1 %}
+<nav class="mt-3"><ul class="pagination">
+  {% for p in pagination.iter_pages() %}
+    {% if p %}<li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for('admin.wallets_overview', page=p) }}">{{ p }}</a></li>
+    {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+  {% endfor %}
+</ul></nav>
+{% endif %}
+{% endblock %}

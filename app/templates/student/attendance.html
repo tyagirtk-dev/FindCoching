@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Attendance — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Attendance History</h4>
+<div class="card p-3">
+  <div class="table-responsive">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Date</th><th>Teacher</th><th>Status</th><th>Remarks</th></tr></thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.date.strftime('%d %b %Y') }}</td>
+        <td>{{ r.teacher.user.name }}</td>
+        <td><span class="badge bg-{{ 'success' if r.status.value == 'present' else ('danger' if r.status.value == 'absent' else 'secondary') }}">{{ r.status.value }}</span></td>
+        <td>{{ r.remarks or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted py-4">No attendance records yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% endblock %}

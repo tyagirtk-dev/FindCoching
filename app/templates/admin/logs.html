@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Audit Logs — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Audit Logs</h4>
+<div class="card p-3">
+  <div class="table-responsive">
+<table class="table table-sm table-hover align-middle mb-0">
+    <thead>
+      <tr><th>Time</th><th>User ID</th><th>Action</th><th>Details</th><th>IP</th></tr>
+    </thead>
+    <tbody>
+      {% for log in pagination.items %}
+      <tr>
+        <td>{{ log.created_at.strftime('%d %b %Y %H:%M') }}</td>
+        <td>{{ log.user_id or '—' }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.details or '—' }}</td>
+        <td>{{ log.ip_address or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-muted py-4">No logs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+
+{% if pagination.pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination">
+    {% for page_num in pagination.iter_pages() %}
+      {% if page_num %}
+        <li class="page-item {{ 'active' if page_num == pagination.page }}">
+          <a class="page-link" href="{{ url_for('admin.logs', page=page_num) }}">{{ page_num }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

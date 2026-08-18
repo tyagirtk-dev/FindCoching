@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Receipt #{{ payment.id }} — {{ site_name }}{% endblock %}
+{% block content %}
+{% set badge = {'verified': 'success', 'rejected': 'danger', 'failed': 'dark', 'refunded': 'secondary', 'pending': 'warning text-dark'} %}
+<div class="card p-4" style="max-width: 480px; margin: auto;">
+  <div class="text-center mb-3">
+    <div class="empty-state-icon mb-2"><i class="bi bi-receipt"></i></div>
+    <h5 class="fw-bold mb-1">Payment Receipt</h5>
+    <span class="badge bg-{{ badge.get(payment.status.value, 'secondary') }}">{{ payment.status.value }}</span>
+  </div>
+
+  <div class="d-flex flex-column gap-2 small">
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Receipt No.</span><span class="fw-semibold">#{{ payment.id }}</span>
+    </div>
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Date</span><span class="fw-semibold">{{ payment.created_at.strftime('%d %b %Y %H:%M') }}</span>
+    </div>
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Teacher</span><span class="fw-semibold">{{ payment.teacher.user.name }}</span>
+    </div>
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Amount</span><span class="fw-bold text-primary">₹{{ payment.amount }}</span>
+    </div>
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Commission ({{ payment.commission_percent }}%)</span><span class="fw-semibold">₹{{ payment.commission_amount }}</span>
+    </div>
+    <div class="d-flex justify-content-between border-bottom pb-2">
+      <span class="text-muted">Net to Teacher</span><span class="fw-semibold">₹{{ payment.net_to_teacher }}</span>
+    </div>
+    <div class="d-flex justify-content-between pb-1">
+      <span class="text-muted">Transaction ID</span><span class="fw-semibold">{{ payment.transaction_id }}</span>
+    </div>
+  </div>
+
+  <button onclick="window.print()" class="btn btn-outline-primary w-100 mt-4">
+    <i class="bi bi-printer"></i> Print Receipt
+  </button>
+</div>
+{% endblock %}

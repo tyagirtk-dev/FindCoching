@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Login — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-sm-8 col-md-6 col-lg-5">
+    <div class="text-center mb-4">
+      <span class="brand-mark d-inline-flex" style="width:52px;height:52px;font-size:1.4rem;"><i class="bi bi-mortarboard-fill"></i></span>
+      <h4 class="mt-3 mb-1 fw-bold">Welcome back</h4>
+      <p class="text-muted small mb-0">Log in to continue to {{ site_name }}</p>
+    </div>
+    <div class="card auth-card p-4">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.email.label(class="form-label") }}
+          <div class="input-icon-group">
+            <i class="bi bi-envelope field-icon"></i>
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+          </div>
+          {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          {{ form.password.label(class="form-label") }}
+          <div class="input-icon-group">
+            <i class="bi bi-lock field-icon"></i>
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+          </div>
+          {% for e in form.password.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="d-flex justify-content-end mb-3 small">
+          <a href="{{ url_for('auth.forgot_password') }}" class="fw-semibold">Forgot password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 btn-lg">Log In</button>
+      </form>
+      <hr>
+      <p class="text-center small mb-0">
+        New here?
+        <a href="{{ url_for('auth.register_student') }}" class="fw-semibold">Register as Student</a> ·
+        <a href="{{ url_for('auth.register_teacher') }}" class="fw-semibold">Register as Teacher</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Payment Settings — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-title">Payment Settings</div>
+<div class="row g-4">
+  <div class="col-md-8">
+    <div class="card p-4">
+      <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <h6 class="text-muted mb-3"><i class="bi bi-qr-code"></i> UPI Configuration</h6>
+        <div class="mb-3">
+          {{ form.upi_enabled.label(class="form-label") }}
+          {{ form.upi_enabled(class="form-select") }}
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            {{ form.gpay_upi_id.label(class="form-label") }}
+            {{ form.gpay_upi_id(class="form-control") }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.phonepe_upi_id.label(class="form-label") }}
+            {{ form.phonepe_upi_id(class="form-control") }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.paytm_upi_id.label(class="form-label") }}
+            {{ form.paytm_upi_id(class="form-control") }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.primary_upi_id.label(class="form-label") }}
+            {{ form.primary_upi_id(class="form-control") }}
+            <div class="form-text">Shown to students on the payment page.</div>
+          </div>
+        </div>
+
+        <h6 class="text-muted mb-3 mt-2"><i class="bi bi-shop"></i> Merchant Details</h6>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            {{ form.merchant_name.label(class="form-label") }}
+            {{ form.merchant_name(class="form-control") }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.merchant_mobile.label(class="form-label") }}
+            {{ form.merchant_mobile(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          {{ form.qr_code.label(class="form-label") }}
+          {{ form.qr_code(class="form-control") }}
+          {% if settings.qr_code_path %}
+          <div class="form-text">Current QR code is shown on the right — uploading a new one replaces it.</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.payment_instructions.label(class="form-label") }}
+          {{ form.payment_instructions(class="form-control", rows=3) }}
+        </div>
+
+        <h6 class="text-muted mb-3 mt-2"><i class="bi bi-cash-stack"></i> Withdrawal &amp; Commission</h6>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            {{ form.min_withdrawal.label(class="form-label") }}
+            {{ form.min_withdrawal(class="form-control") }}
+          </div>
+          <div class="col-md-4 mb-3">
+            {{ form.max_withdrawal.label(class="form-label") }}
+            {{ form.max_withdrawal(class="form-control") }}
+          </div>
+          <div class="col-md-4 mb-3">
+            {{ form.commission_percent.label(class="form-label") }}
+            {{ form.commission_percent(class="form-control") }}
+          </div>
+        </div>
+
+        <h6 class="text-muted mb-3 mt-2"><i class="bi bi-sliders"></i> Behavior</h6>
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            {{ form.auto_approval.label(class="form-label") }}
+            {{ form.auto_approval(class="form-select") }}
+            <div class="form-text">ON: student payments are instantly verified and wallet-credited.</div>
+          </div>
+          <div class="col-md-4 mb-3">
+            {{ form.payment_timeout.label(class="form-label") }}
+            {{ form.payment_timeout(class="form-control") }}
+          </div>
+          <div class="col-md-4 mb-3">
+            {{ form.maintenance_mode.label(class="form-label") }}
+            {{ form.maintenance_mode(class="form-select") }}
+            <div class="form-text">ON: students cannot submit new payments.</div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-2 btn-lg"><i class="bi bi-check2-circle"></i> Save Payment Settings</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <h6 class="fw-bold mb-3">Current QR Code</h6>
+      {% if settings.qr_code_path %}
+      <div class="qr-frame"><img src="{{ url_for('static', filename='uploads/' + settings.qr_code_path) }}" alt="Payment QR" class="img-fluid rounded"></div>
+      {% else %}
+      <p class="text-muted small">No QR code uploaded yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

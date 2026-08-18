@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}My Hire Requests — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">My Hire Requests</h4>
+{% if hires %}
+<div class="row g-3">
+  {% for h in hires %}
+  <div class="col-md-6">
+    <div class="card p-3">
+      <div class="d-flex justify-content-between">
+        <h6>{{ h.teacher.user.name }}</h6>
+        <span class="badge bg-{{ 'success' if h.status.value == 'accepted' else ('warning text-dark' if h.status.value == 'pending' else 'secondary') }}">
+          {{ h.status.value }}
+        </span>
+      </div>
+      <div class="small text-muted mb-2">{{ h.teacher.subjects }}</div>
+      {% if h.message %}<div class="small mb-2"><em>"{{ h.message }}"</em></div>{% endif %}
+      <div class="d-flex gap-2 flex-wrap">
+        {% if h.status.value == 'pending' %}
+        <form method="POST" action="{{ url_for('student.cancel_hire', hire_id=h.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+        </form>
+        {% elif h.status.value == 'accepted' %}
+        <a href="{{ url_for('chat.start_thread', teacher_id=h.teacher_id) }}" class="btn btn-sm btn-outline-primary">Message</a>
+        <a href="{{ url_for('student.leave_review', teacher_id=h.teacher_id) }}" class="btn btn-sm btn-outline-secondary">
+          {{ 'Edit Review' if h.teacher_id in reviewed_teacher_ids else 'Leave Review' }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card p-4 text-center text-muted">No hire requests yet. <a href="{{ url_for('student.teacher_search') }}">Find a teacher</a>.</div>
+{% endif %}
+{% endblock %}

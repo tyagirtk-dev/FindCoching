@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Teacher Registration — {{ site_name }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-10">
+    <div class="text-center mb-3">
+      <span class="brand-mark d-inline-flex" style="width:52px;height:52px;font-size:1.4rem;"><i class="bi bi-easel-fill"></i></span>
+    </div>
+    <div class="card auth-card p-4">
+      <h4 class="mb-1 fw-bold text-center">Teacher Registration</h4>
+      <p class="text-muted small text-center mb-3">Your profile will be reviewed by our admin team before you can log in and start teaching.</p>
+      <form method="POST" enctype="multipart/form-data" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+            {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.mobile.label(class="form-label") }}
+            {{ form.mobile(class="form-control" + (" is-invalid" if form.mobile.errors else "")) }}
+            {% for e in form.mobile.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+          </div>
+          <div class="col-md-6"></div>
+          <div class="col-md-6">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+          </div>
+          <div class="col-md-6">
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.photo.label(class="form-label") }}
+            {{ form.photo(class="form-control" + (" is-invalid" if form.photo.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.aadhaar.label(class="form-label") }}
+            {{ form.aadhaar(class="form-control" + (" is-invalid" if form.aadhaar.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.qualification_certificate.label(class="form-label") }}
+            {{ form.qualification_certificate(class="form-control" + (" is-invalid" if form.qualification_certificate.errors else "")) }}
+          </div>
+
+          <div class="col-md-3">
+            {{ form.experience_years.label(class="form-label") }}
+            {{ form.experience_years(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.subjects.label(class="form-label") }}
+            {{ form.subjects(class="form-control", placeholder="e.g. Mathematics, Physics") }}
+          </div>
+          <div class="col-md-3">
+            {{ form.classes.label(class="form-label") }}
+            {{ form.classes(class="form-control", placeholder="e.g. 6,7,8") }}
+          </div>
+          <div class="col-md-2">
+            {{ form.teaching_mode.label(class="form-label") }}
+            {{ form.teaching_mode(class="form-select") }}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.monthly_fees.label(class="form-label") }}
+            {{ form.monthly_fees(class="form-control") }}
+          </div>
+
+          <div class="col-12">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control", rows="2") }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">Pin your teaching location on the map</label>
+            <div id="map" style="height: 280px; border-radius: 10px;"></div>
+          </div>
+          <div class="col-md-6">
+            {{ form.latitude.label(class="form-label") }}
+            {{ form.latitude(class="form-control", id="latitude", readonly=true) }}
+          </div>
+          <div class="col-md-6">
+            {{ form.longitude.label(class="form-label") }}
+            {{ form.longitude(class="form-control", id="longitude", readonly=true) }}
+          </div>
+
+          <div class="col-12"><hr><h6>Payout Details</h6></div>
+          <div class="col-md-4">
+            {{ form.upi_id.label(class="form-label") }}
+            {{ form.upi_id(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.bank_account_holder.label(class="form-label") }}
+            {{ form.bank_account_holder(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.bank_account_number.label(class="form-label") }}
+            {{ form.bank_account_number(class="form-control") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.bank_ifsc.label(class="form-label") }}
+            {{ form.bank_ifsc(class="form-control") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.bank_name.label(class="form-label") }}
+            {{ form.bank_name(class="form-control") }}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-4 btn-lg">Submit Application</button>
+      </form>
+      <p class="text-center small mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-semibold">Log in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  const map = L.map('map').setView([20.5937, 78.9629], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  let marker;
+  function setMarker(lat, lng) {
+    if (marker) { marker.setLatLng([lat, lng]); } else { marker = L.marker([lat, lng]).addTo(map); }
+    document.getElementById('latitude').value = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+  }
+
+  map.on('click', function (e) { setMarker(e.latlng.lat, e.latlng.lng); });
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      setMarker(pos.coords.latitude, pos.coords.longitude);
+    });
+  }
+</script>
+{% endblock %}
