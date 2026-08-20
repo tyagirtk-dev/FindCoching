@@ -155,7 +155,152 @@ python run.py
 ```
 
 Visit `http://127.0.0.1:5000`.
+Windows Setup
 
+Requirements
+
+Install these first:
+
+- "Visual Studio Code" (https://code.visualstudio.com/download)
+- "Python 3.13.x" (https://www.python.org/downloads/windows/)
+- "Git for Windows" (https://git-scm.com/download/win)
+
+«Recommended: Use Python 3.13.x for this project.»
+
+Option A — Automatic Windows Setup
+
+Clone the repository:
+
+git clone https://github.com/tyagirtk-dev/FindCoching.git
+cd FindCoching
+
+Run the Windows setup script:
+
+powershell -ExecutionPolicy Bypass -File .\setup_windows.ps1
+
+The script automatically:
+
+1. Checks Python
+2. Creates ".venv"
+3. Activates the virtual environment
+4. Upgrades pip
+5. Installs "requirements.txt"
+6. Creates ".env" from ".env.example"
+7. Initializes the local SQLite database
+8. Runs "seed.py"
+9. Starts the Flask development server
+
+Then open:
+
+http://127.0.0.1:5000
+
+Option B — Manual Windows Setup
+
+Create and activate the virtual environment:
+
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+If PowerShell blocks script execution:
+
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+
+Then activate again:
+
+.venv\Scripts\Activate.ps1
+
+Install dependencies:
+
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+Create ".env":
+
+Copy-Item .env.example .env
+
+Edit ".env" and set:
+
+SECRET_KEY=your-long-random-secret-key
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=ChangeMe123!
+
+For local development, leave "DATABASE_URL" unset. The application will use SQLite.
+
+Initialize the database:
+
+python seed.py
+
+Start Flask:
+
+python run.py
+
+Open:
+
+http://127.0.0.1:5000
+
+Local Development Database
+
+Windows local development uses SQLite by default.
+
+Windows Development → SQLite
+Production → PostgreSQL
+
+PostgreSQL is not required for local Windows development.
+
+SMTP Configuration
+
+SMTP credentials are not required in ".env".
+
+After logging into the Super Admin account, configure SMTP from:
+
+Admin → SMTP Settings
+
+This is required for email OTP and password-reset emails.
+
+Windows Upload Directories
+
+Make sure these directories exist:
+
+app/static/uploads/photos/
+app/static/uploads/documents/
+app/static/uploads/chat/
+
+The application uses these directories for teacher photos, verification documents, and chat attachments.
+
+Default Super Admin
+
+The initial Super Admin is created by:
+
+python seed.py
+
+Credentials are taken from ".env":
+
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=ChangeMe123!
+
+Change the default password after the first login.
+
+Troubleshooting
+
+Check Python:
+
+python --version
+
+Check virtual environment:
+
+.venv\Scripts\Activate.ps1
+
+Check installed packages:
+
+pip list
+
+If dependencies need to be reinstalled:
+
+pip install -r requirements.txt
+
+If the database needs to be recreated during local development, stop the application and remove the local SQLite database, then run:
+
+python seed.py
 ### 6. Configure SMTP
 
 Log in as Super Admin (the account created by `seed.py`) → **Admin → SMTP Settings**,
