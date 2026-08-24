@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Website Settings — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 500px;">
+  <h4 class="mb-3">Website Settings</h4>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.site_name.label(class="form-label") }}
+      {{ form.site_name(class="form-control") }}
+    </div>
+    <div class="mb-3">
+      {{ form.upi_payee_id.label(class="form-label") }}
+      {{ form.upi_payee_id(class="form-control") }}
+      <div class="form-text">Shown to students on the payment page.</div>
+    </div>
+    <div class="mb-3">
+      {{ form.upi_payee_name.label(class="form-label") }}
+      {{ form.upi_payee_name(class="form-control") }}
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Save</button>
+  </form>
+</div>
+{% endblock %}

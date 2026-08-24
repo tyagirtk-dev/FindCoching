@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ site_name }} - Bharat's #1 Local Home Tutors & Coaching Platform{% endblock %}</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ site_name }}">
+  <meta name="description" content="Find, hire and pay verified local home tutors & coaching centers near you. Trustworthy learning for students & parents.">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
+  <script>
+    try {
+      var t = localStorage.getItem('lt-theme');
+      if (t) document.documentElement.setAttribute('data-bs-theme', t);
+    } catch (e) {}
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{{ 'has-bottom-nav' if current_user.is_authenticated else '' }}">
+
+  <header class="app-header shadow-sm border-bottom sticky-top bg-body">
+    <div class="container-fluid px-3 px-lg-4">
+      <nav class="navbar navbar-expand-lg p-0 py-2">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
+          <span class="brand-mark bg-primary text-white rounded-3 p-2 d-inline-flex align-items-center justify-content-center">
+            <i class="bi bi-mortarboard-fill fs-5"></i>
+          </span>
+          <span class="fw-bold fs-5 text-dark d-none d-sm-inline">{{ site_name }}</span>
+        </a>
+
+        <div class="d-flex align-items-center gap-2 order-lg-2">
+          <button class="icon-btn rounded-circle p-2 border-0 bg-light" id="themeToggle" type="button" title="Toggle dark mode">
+            <i class="bi bi-moon-stars"></i>
+          </button>
+          
+          {% if current_user.is_authenticated %}
+            <a class="icon-btn rounded-circle p-2 border-0 bg-light position-relative" href="{{ url_for(current_user.role.value + '.notifications') if not current_user.is_super_admin else url_for('admin.dashboard') }}" title="Notifications">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger notif-dot position-absolute top-0 start-100 translate-middle p-1 border border-light rounded-circle" data-notif-badge></span>
+            </a>
+            <a class="btn btn-sm btn-outline-danger d-none d-lg-inline-flex align-items-center gap-1" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right"></i> <span class="d-none d-xl-inline">Logout</span>
+            </a>
+            <button class="navbar-toggler border-0 p-0 icon-btn d-lg-none ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+              <i class="bi bi-list fs-3"></i>
+            </button>
+          {% else %}
+            <a class="btn btn-sm btn-light border text-dark fw-medium d-none d-sm-inline-flex px-3" href="{{ url_for('auth.login') }}">
+              Sign In
+            </a>
+            <a class="btn btn-sm btn-primary fw-semibold px-3 rounded-pill shadow-sm" href="{{ url_for('auth.login') }}">
+              Get Started <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+          {% endif %}
+        </div>
+
+        <div class="collapse navbar-collapse order-lg-1" id="navMain">
+          <ul class="navbar-nav app-nav-links ms-lg-4 gap-lg-1 mt-3 mt-lg-0 align-items-lg-center">
+            {% if current_user.is_authenticated %}
+              {% if current_user.is_super_admin %}
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.students_list') }}">Students</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.teachers_list') }}">Teachers</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.hires_list') }}">Hires</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.payments_list') }}">Payments</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.withdrawals_list') }}">Withdrawals</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('admin.reports') }}">Reports</a></li>
+              {% elif current_user.is_teacher %}
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.hire_requests') }}">Requests</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.my_students') }}">Students</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.mark_attendance') }}">Attendance</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.wallet') }}">Wallet</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('chat.inbox') }}">Messages</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.profile') }}">Profile</a></li>
+              {% else %}
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.teacher_search') }}">Find Tutors</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.my_hires') }}">My Classes</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.payments') }}">Payments</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('chat.inbox') }}">Messages</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.profile') }}">Profile</a></li>
+              {% endif %}
+              <li class="nav-item d-lg-none mt-2 pt-2 border-top">
+                <a class="btn btn-sm btn-outline-danger w-100" href="{{ url_for('auth.logout') }}">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('main.index') }}">Home</a></li>
+              <li class="nav-item"><a class="nav-link fw-medium" href="#subjects">Subjects</a></li>
+              <li class="nav-item"><a class="nav-link fw-medium" href="#features">Features</a></li>
+              <li class="nav-item"><a class="nav-link fw-medium" href="#services">Services</a></li>
+              <li class="nav-item"><a class="nav-link fw-medium" href="#faq">FAQ</a></li>
+              <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('main.contact') }}">Contact Us</a></li>
+              <li class="nav-item d-sm-none mt-2"><a class="btn btn-sm btn-outline-primary w-100" href="{{ url_for('auth.login') }}">Sign In</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main py-3">
+    <div class="container-fluid px-3" style="max-width: 1200px;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show shadow-sm rounded-3" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}
+      {% if not current_user.is_authenticated %}
+      
+      <!-- HERO SECTION -->
+      <section class="py-5 text-center position-relative">
+        <div class="row justify-content-center">
+          <div class="col-lg-10">
+            <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill mb-3">
+              <i class="bi bi-shield-check me-1"></i> India's Trusted Local Tutor & Coaching Network
+            </span>
+            <h1 class="display-4 fw-extrabold text-dark mb-3">
+              Aapke Gaon Aur Sahar Me Certified Home Tutors & Coaching Centers
+            </h1>
+            <p class="fs-5 text-secondary mb-4 mx-auto" style="max-width: 800px;">
+              Parents aur Students ke liye safe, transparent aur reliable learning platform. Aasan fee tracking, daily attendance monitoring, aur local experienced teachers ek hi jagah.
+            </p>
+
+            <!-- Search Card -->
+            <div class="card shadow-lg border-0 p-3 rounded-4 mb-4 bg-white">
+              <form action="{{ url_for('student.teacher_search') }}" method="GET" class="row g-2 align-items-center">
+                <div class="col-md-5 text-start">
+                  <label class="form-label text-muted small fw-bold mb-1 ms-2">KYA PADHANAA HAI?</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-book fs-5"></i></span>
+                    <input type="text" name="q" class="form-control bg-light border-0 shadow-none" placeholder="Subject (e.g., Math, Science, English, NEET)">
+                  </div>
+                </div>
+                <div class="col-md-4 text-start">
+                  <label class="form-label text-muted small fw-bold mb-1 ms-2">KAHAN PADHANAA HAI?</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-0 text-muted"><i class="bi bi-geo-alt fs-5"></i></span>
+                    <input type="text" name="location" class="form-control bg-light border-0 shadow-none" placeholder="Gaon / Mohalla / City Name">
+                  </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                  <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-3 fs-6 py-2 mt-md-4">
+                    Find Tutors <i class="bi bi-search ms-1"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="row g-3 py-3 border-top border-bottom text-center">
+              <div class="col-6 col-md-3">
+                <div class="fw-bold fs-4 text-primary">5,000+</div>
+                <div class="text-muted small">Verified Tutors</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="fw-bold fs-4 text-success">10,000+</div>
+                <div class="text-muted small">Happy Students</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="fw-bold fs-4 text-warning">50+</div>
+                <div class="text-muted small">Cities & Villages</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="fw-bold fs-4 text-info">99.8%</div>
+                <div class="text-muted small">Parent Satisfaction</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KEY FEATURES FOR EVERYONE (6 CARDS) -->
+      <section id="features" class="py-5">
+        <div class="text-center mb-5">
+          <span class="badge bg-secondary-subtle text-dark fw-bold px-3 py-1 rounded-pill">Platform Benefits</span>
+          <h2 class="fw-bold text-dark mt-2 fs-2">Platform Ki Khas Suvidhayen (Key Features)</h2>
+          <p class="text-muted">Aapke padhai aur fees dono ko safe aur systematic banane ke liye</p>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-primary-subtle text-primary rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-shield-lock-fill fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">100% Aadhaar Verified Tutors</h5>
+                <p class="text-muted small">
+                  Bachhon ki safety humari pehli priority hai. Platform par aane wale har home tutor ki Aadhaar Card aur document verification hoti hai.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-success-subtle text-success rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-calendar2-check-fill fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Daily Online Attendance Tracker</h5>
+                <p class="text-muted small">
+                  Tutor ke aane aur jaane ki daily attendance record hoti hai. Parents apne mobile par dekh sakte hain ki is mahine kitne din padhai hui.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-warning-subtle text-warning rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-wallet2 fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Safe Escrow Fee Payment</h5>
+                <p class="text-muted small">
+                  Advance fee platform ke safe wallet me rehti hai. Jab mahina poora hota hai aur attendance clear hoti hai, tabhi teacher ko payment release hota hai.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-info-subtle text-info rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-chat-dots-fill fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Direct Chat & Progress Report</h5>
+                <p class="text-muted small">
+                  Parents aur Teachers direct chat kar sakte hain. Monthly test performance aur progress report digital format me parents ko milta hai.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-danger-subtle text-danger rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-geo-alt-fill fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Local Area & Village Connectivity</h5>
+                <p class="text-muted small">
+                  Khas gaon, kasbo aur chhote shahron ke liye design kiya gaya platform. Aap apne 1-2 KM ke andar ke sabse badhiya teacher dhoondh sakte hain.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-3">
+              <div class="card-body">
+                <div class="bg-dark-subtle text-dark rounded-3 p-3 d-inline-block mb-3">
+                  <i class="bi bi-arrow-repeat fs-3"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Easy Tutor Replacement</h5>
+                <p class="text-muted small">
+                  Agar aapko teacher ki padhai pasand nahi aati, toh bina kisi extra charge ke aap doosra tutor request kar sakte hain.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USER ROLES SECTION (3 BIG CARDS WITH DETAILS) -->
+      <section id="services" class="py-5 bg-light rounded-4 px-3 px-md-4">
+        <div class="text-center mb-5">
+          <span class="badge bg-primary text-white fw-bold px-3 py-1 rounded-pill">Solutions</span>
+          <h2 class="fw-bold text-dark mt-2 fs-2">Aapke Liye Kya Khas Hai?</h2>
+          <p class="text-muted">Parents, Tutors aur Coaching Centers sabhi ke liye customized solutions</p>
+        </div>
+
+        <div class="row g-4">
+          <!-- Card 1: Parents & Students -->
+          <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white">
+              <div class="bg-primary text-white rounded-3 p-3 d-inline-block mb-3" style="width: fit-content;">
+                <i class="bi bi-people-fill fs-3"></i>
+              </div>
+              <h4 class="fw-bold text-dark mb-2">Parents & Students</h4>
+              <p class="text-muted small mb-3">
+                Apne bachhon ke ujjwal bhavishya ke liye sahi aur bharosemand teacher chunein.
+              </p>
+              <hr class="my-3">
+              <ul class="list-unstyled text-secondary small m-0 space-y-2">
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Free Tutor Search:</strong> Koi upfront browsing charge nahi.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Demo Classes:</strong> 2 Din ki free trial demo class request karein.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Track Attendance:</strong> Class miss hone par automatic alert.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Budget Friendly:</strong> Apne budget ke hisab se fees negotiate karein.</li>
+                <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Transparent Payment:</strong> UPI/NetBanking se safe monthly payment.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Card 2: Home Tutors -->
+          <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white">
+              <div class="bg-success text-white rounded-3 p-3 d-inline-block mb-3" style="width: fit-content;">
+                <i class="bi bi-person-badge-fill fs-3"></i>
+              </div>
+              <h4 class="fw-bold text-dark mb-2">Home Tutors & Teachers</h4>
+              <p class="text-muted small mb-3">
+                Apne paas ke students dhoondhein aur mahine ki regular earning shuru karein.
+              </p>
+              <hr class="my-3">
+              <ul class="list-unstyled text-secondary small m-0">
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Regular Tuition Inquiries:</strong> Apne area ke student requests paayein.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Guaranteed Payment:</strong> Time par direct bank account me withdrawal.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Flexible Batch Timings:</strong> Apne hisab se class ka samay set karein.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Build Verified Profile:</strong> Parent reviews se apni rating badhayein.</li>
+                <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Zero Commission Option:</strong> Direct student connect feature.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Card 3: Coaching Centers -->
+          <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 p-4 bg-white">
+              <div class="bg-warning text-dark rounded-3 p-3 d-inline-block mb-3" style="width: fit-content;">
+                <i class="bi bi-buildings-fill fs-3"></i>
+              </div>
+              <h4 class="fw-bold text-dark mb-2">Coaching Centers</h4>
+              <p class="text-muted small mb-3">
+                Apne institute ke admission badhayein aur batches ko digitally manage karein.
+              </p>
+              <hr class="my-3">
+              <ul class="list-unstyled text-secondary small m-0">
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Digital Marketing Reach:</strong> Gaon aur shahron tak institute ka prachar.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Batch Management:</strong> Student enrolment aur fee status tracking.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Notice Board:</strong> Test schedule aur holidays ki automatic notification.</li>
+                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Online Fee Collection:</strong> Automatic payment receipt generation.</li>
+                <li><i class="bi bi-check-circle-fill text-success me-2"></i><strong>Verified Institute Badge:</strong> Platform trust seal paayein.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SUBJECTS & CLASSES COVERED -->
+      <section id="subjects" class="py-5">
+        <div class="text-center mb-5">
+          <span class="badge bg-info-subtle text-info fw-bold px-3 py-1 rounded-pill">All Subjects</span>
+          <h2 class="fw-bold text-dark mt-2 fs-2">Har Class Aur Subject Ke Liye Tutors</h2>
+          <p class="text-muted">Nursery se lekar Competitive Exams tak sabhi vishay shamil hain</p>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+              <i class="bi bi-book-half fs-2 text-primary d-block mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Class 1st to 5th</h6>
+              <span class="text-muted small">All Subjects / All Boards</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+              <i class="bi bi-calculator fs-2 text-success d-block mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Class 6th to 10th</h6>
+              <span class="text-muted small">Maths, Science, English, SST</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+              <i class="bi bi-journal-code fs-2 text-warning d-block mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Class 11th & 12th</h6>
+              <span class="text-muted small">Physics, Chem, Bio, Math, Comm</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="p-3 border rounded-3 bg-white text-center shadow-sm">
+              <i class="bi bi-trophy fs-2 text-danger d-block mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Competitive Exams</h6>
+              <span class="text-muted small">NEET, JEE, SSC, Railway, UP Police</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS (STEP BY STEP PROCESS) -->
+      <section class="py-5 bg-white rounded-4 shadow-sm my-4 px-3 px-md-4 border">
+        <div class="text-center mb-5">
+          <span class="badge bg-success-subtle text-success fw-bold px-3 py-1 rounded-pill">Simple Working</span>
+          <h2 class="fw-bold text-dark mt-2 fs-2">Kaise Kaam Karta Hai Yeh Platform?</h2>
+          <p class="text-muted">Aasan 4 steps me shuru karein apni padhai</p>
+        </div>
+
+        <div class="row g-4 text-center">
+          <div class="col-md-3">
+            <div class="step-icon mx-auto mb-3 bg-primary text-white fw-bold fs-4 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 65px; height: 65px;">
+              1
+            </div>
+            <h5 class="fw-bold">1. Free Registration</h5>
+            <p class="text-muted small">Student ya Teacher ke roop me apna free account banayein aur location add karein.</p>
+          </div>
+          <div class="col-md-3">
+            <div class="step-icon mx-auto mb-3 bg-success text-white fw-bold fs-4 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 65px; height: 65px;">
+              2
+            </div>
+            <h5 class="fw-bold">2. Search & Select</h5>
+            <p class="text-muted small">Subject aur area ke hisab se verified teachers ki profile dekhein aur compare karein.</p>
+          </div>
+          <div class="col-md-3">
+            <div class="step-icon mx-auto mb-3 bg-warning text-dark fw-bold fs-4 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 65px; height: 65px;">
+              3
+            </div>
+            <h5 class="fw-bold">3. Book Free Demo</h5>
+            <p class="text-muted small">Direct chat karke demo class fix karein aur timing discussion karein.</p>
+          </div>
+          <div class="col-md-3">
+            <div class="step-icon mx-auto mb-3 bg-info text-white fw-bold fs-4 rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 65px; height: 65px;">
+              4
+            </div>
+            <h5 class="fw-bold">4. Safe Payment & Classes</h5>
+            <p class="text-muted small">Demo pasand aane par monthly class shuru karein aur safe wallet se payment karein.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- FREQUENTLY ASKED QUESTIONS (FAQ) -->
+      <section id="faq" class="py-5">
+        <div class="text-center mb-5">
+          <span class="badge bg-dark-subtle text-dark fw-bold px-3 py-1 rounded-pill">Got Questions?</span>
+          <h2 class="fw-bold text-dark mt-2 fs-2">Aam Taur Par Pooche Jaane Wale Sawal (FAQ)</h2>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-lg-9">
+            <div class="accordion shadow-sm rounded-4 overflow-hidden" id="faqAccordion">
+              <div class="accordion-item border-0 border-bottom">
+                <h2 class="accordion-header">
+                  <button class="accordion-button fw-bold text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                    Kya Tutors Ki Verification Hoti Hai?
+                  </button>
+                </h2>
+                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body text-secondary small">
+                    Haan, hum sabhi teachers ke Aadhaar Card, Educational Certificates, aur identity documents verification ke baad hi profile live karte hain.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item border-0 border-bottom">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed fw-bold text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                    Kya Demo Class Free Hoti Hai?
+                  </button>
+                </h2>
+                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body text-secondary small">
+                    Ji haan, aap 1 ya 2 din ki free demo class request kar sakte hain taaki aapko teacher ki teaching style samajh aa sake.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item border-0 border-bottom">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed fw-bold text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                    Fees Kaise Pay Karni Hoti Hai?
+                  </button>
+                </h2>
+                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body text-secondary small">
+                    Aap online UPI, Debit Card ya NetBanking se fees safe escrow wallet me jama kar sakte hain. Payment tabhi release hoti hai jab class poori hoti hai.
+                  </div>
+                </div>
+              </div>
+
+              <div class="accordion-item border-0">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed fw-bold text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                    Agar Teacher Pasand Nahi Aaya Toh Kya Hoga?
+                  </button>
+                </h2>
+                <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body text-secondary small">
+                    Aap kabhi bhi support se request karke doosra verified teacher choose kar sakte hain bina kisi extra processing fee ke.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BIG CALL TO ACTION -->
+      <section class="py-5 my-3 text-center bg-primary text-white rounded-4 p-4 shadow-lg position-relative overflow-hidden">
+        <div class="py-3">
+          <h2 class="fw-bold mb-3 display-6">Aaj Hi Sahi Learning Partner Choose Karein</h2>
+          <p class="fs-5 mb-4 opacity-90 mx-auto" style="max-width: 700px;">
+            Aap ek student hain ya ek teacher? Humare verified community me shamil hone ke liye abhi register karein.
+          </p>
+          <div class="d-flex flex-wrap justify-content-center gap-3">
+            <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg fw-bold px-4 text-primary rounded-pill shadow">
+              Get Started Now <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+            <a href="{{ url_for('main.contact') }}" class="btn btn-outline-light btn-lg fw-bold px-4 rounded-pill">
+              Contact Support
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {% endif %}
+      {% endblock %}
+    </div>
+  </main>
+
+  <footer class="app-footer py-5 mt-5 bg-light border-top">
+    <div class="container text-muted">
+      <div class="row g-4 mb-4 text-start">
+        <div class="col-lg-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="brand-mark bg-primary text-white rounded-3 p-1 d-inline-flex align-items-center justify-content-center">
+              <i class="bi bi-mortarboard-fill fs-6"></i>
+            </span>
+            <span class="fw-bold fs-5 text-dark">{{ site_name }}</span>
+          </div>
+          <p class="small text-secondary mb-3">
+            Bharat ka trusted home tutor aur coaching discovery platform. Hum student aur teachers ke beech ek safe aur transparent maahol banate hain.
+          </p>
+        </div>
+
+        <div class="col-6 col-lg-2">
+          <h6 class="fw-bold text-dark mb-3">Quick Links</h6>
+          <ul class="list-unstyled small space-y-2">
+            <li class="mb-1"><a href="{{ url_for('main.index') }}" class="text-decoration-none text-muted">Home</a></li>
+            <li class="mb-1"><a href="#features" class="text-decoration-none text-muted">Features</a></li>
+            <li class="mb-1"><a href="#services" class="text-decoration-none text-muted">Services</a></li>
+            <li class="mb-1"><a href="#faq" class="text-decoration-none text-muted">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <h6 class="fw-bold text-dark mb-3">For Users</h6>
+          <ul class="list-unstyled small space-y-2">
+            <li class="mb-1"><a href="{{ url_for('auth.login') }}" class="text-decoration-none text-muted">Find Tutors</a></li>
+            <li class="mb-1"><a href="{{ url_for('auth.login') }}" class="text-decoration-none text-muted">Join as Teacher</a></li>
+            <li class="mb-1"><a href="{{ url_for('auth.login') }}" class="text-decoration-none text-muted">Coaching Registration</a></li>
+            <li class="mb-1"><a href="{{ url_for('main.contact') }}" class="text-decoration-none text-muted">Help & Support</a></li>
+          </ul>
+        </div>
+
+        <div class="col-lg-3">
+          <h6 class="fw-bold text-dark mb-3">Contact Support</h6>
+          <p class="small text-muted mb-1"><i class="bi bi-envelope me-2"></i> support@{{ site_name.lower().replace(' ', '') }}.com</p>
+          <p class="small text-muted mb-2"><i class="bi bi-telephone me-2"></i> +91 98765 43210</p>
+          <div class="d-flex gap-2">
+            <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-facebook"></i></a>
+            <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-whatsapp"></i></a>
+            <a href="#" class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-instagram"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-top pt-3 text-center small text-secondary">
+        <div>&copy; {{ site_name }}. All rights reserved. | Verified Local Tutors & Coaching Network</div>
+      </div>
+    </div>
+  </footer>
+
+  {% if current_user.is_authenticated %}
+  <nav class="bottom-nav">
+    <div class="bn-row">
+      {% if current_user.is_super_admin %}
+        <a class="bn-item" data-path="/admin/dashboard" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/admin/students" href="{{ url_for('admin.students_list') }}"><i class="bi bi-people"></i><span>Students</span></a>
+        <a class="bn-item" data-path="/admin/teachers" href="{{ url_for('admin.teachers_list') }}"><i class="bi bi-person-workspace"></i><span>Teachers</span></a>
+        <a class="bn-item" data-path="/admin/payments" href="{{ url_for('admin.payments_list') }}"><i class="bi bi-wallet2"></i><span>Payments</span></a>
+        <a class="bn-item" data-path="/admin/reports" href="{{ url_for('admin.reports') }}"><i class="bi bi-graph-up"></i><span>More</span></a>
+      {% elif current_user.is_teacher %}
+        <a class="bn-item" data-path="/teacher/dashboard" href="{{ url_for('teacher.dashboard') }}"><i class="bi bi-house-door"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/teacher/students" href="{{ url_for('teacher.my_students') }}"><i class="bi bi-people"></i><span>Students</span></a>
+        <a class="bn-item" data-path="/teacher/attendance" href="{{ url_for('teacher.mark_attendance') }}"><i class="bi bi-calendar-check"></i><span>Attendance</span></a>
+        <a class="bn-item" data-path="/teacher/wallet" href="{{ url_for('teacher.wallet') }}"><i class="bi bi-wallet2"></i><span>Wallet</span></a>
+        <a class="bn-item" data-path="/teacher/profile" href="{{ url_for('teacher.profile') }}"><i class="bi bi-person-circle"></i><span>Profile</span></a>
+      {% else %}
+        <a class="bn-item" data-path="/student/dashboard" href="{{ url_for('student.dashboard') }}"><i class="bi bi-house-door"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/student/teachers" href="{{ url_for('student.teacher_search') }}"><i class="bi bi-search"></i><span>Teachers</span></a>
+        <a class="bn-item" data-path="/student/hires" href="{{ url_for('student.my_hires') }}"><i class="bi bi-journal-bookmark"></i><span>Classes</span></a>
+        <a class="bn-item" data-path="/student/payments" href="{{ url_for('student.payments') }}"><i class="bi bi-wallet2"></i><span>Payments</span></a>
+        <a class="bn-item" data-path="/student/profile" href="{{ url_for('student.profile') }}"><i class="bi bi-person-circle"></i><span>Profile</span></a>
+      {% endif %}
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="install-banner" id="installBanner">
+    <span class="brand-mark"><i class="bi bi-mortarboard-fill"></i></span>
+    <div class="flex-fill">
+      <div class="fw-bold small">Install {{ site_name }}</div>
+      <div class="small opacity-75">Add to your home screen for the full app experience.</div>
+    </div>
+    <button class="btn btn-primary btn-sm btn-pill" id="installBannerBtn">Install</button>
+    <button class="btn btn-sm btn-pill btn-outline-light" id="installBannerDismiss"><i class="bi bi-x"></i></button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

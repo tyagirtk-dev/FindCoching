@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} — Find Local Tutors{% endblock %}
+{% block content %}
+<div class="hero p-4 p-sm-5 mb-4 text-center">
+  <h1 class="h2 fw-bold mb-2">Find the right tutor, right around the corner</h1>
+  <p class="mb-4 opacity-90">Search verified local teachers near you, hire, attend classes, and pay securely — all from one app.</p>
+  <div class="d-flex justify-content-center gap-2 flex-wrap">
+    <a href="{{ url_for('auth.register_student') }}" class="btn btn-light btn-lg btn-pill">
+      <i class="bi bi-person-fill"></i> I'm a Student
+    </a>
+    <a href="{{ url_for('auth.register_teacher') }}" class="btn btn-outline-light btn-lg btn-pill">
+      <i class="bi bi-easel-fill"></i> I'm a Teacher
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-6 col-md-4">
+    <div class="card p-3 p-md-4 h-100 card-tap">
+      <div class="stat-icon bg-brand mb-2"><i class="bi bi-geo-alt-fill"></i></div>
+      <h6 class="fw-bold mb-1">Hyperlocal Search</h6>
+      <p class="text-muted small mb-0">Discover verified teachers within your configurable radius, sorted by distance.</p>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card p-3 p-md-4 h-100 card-tap">
+      <div class="stat-icon bg-success-soft mb-2"><i class="bi bi-shield-check"></i></div>
+      <h6 class="fw-bold mb-1">Verified Teachers</h6>
+      <p class="text-muted small mb-0">Every teacher is manually verified by our admin team before they can teach.</p>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card p-3 p-md-4 h-100 card-tap">
+      <div class="stat-icon bg-warning-soft mb-2"><i class="bi bi-wallet2"></i></div>
+      <h6 class="fw-bold mb-1">Secure Payments</h6>
+      <p class="text-muted small mb-0">Pay via UPI, tracked in a transparent wallet with attendance-backed billing.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card p-4 mt-4 text-center">
+  <i class="bi bi-phone display-6 text-primary mb-2"></i>
+  <h6 class="fw-bold mb-1">Install {{ site_name }} on your phone</h6>
+  <p class="text-muted small mb-0">Open this site in your mobile browser and tap "Add to Home Screen" for a full app-like experience — no app store needed.</p>
+</div>
+{% endblock %}

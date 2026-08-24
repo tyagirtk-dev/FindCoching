@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} — Find a Tutor Near You{% endblock %}
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="home-wrap py-4">
+  <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
+    <span class="home-kicker">Welcome back</span>
+    <h1 class="h3 fw-bold mt-2 mb-2">{{ current_user.name }}</h1>
+    <p class="text-muted mb-4">Continue from your dashboard.</p>
+    {% if current_user.is_teacher %}
+      <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-primary rounded-pill px-4">Teacher Dashboard</a>
+    {% elif current_user.is_super_admin %}
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary rounded-pill px-4">Admin Dashboard</a>
+    {% else %}
+      <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary rounded-pill px-4">Student Dashboard</a>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="home-wrap">
+  <section class="home-hero">
+    <div class="home-hero-glow"></div>
+    <div class="position-relative">
+      <span class="home-kicker"><i class="bi bi-patch-check-fill me-1"></i> Local tutor marketplace</span>
+      <h1 class="home-title">Find the right teacher <span>near you.</span></h1>
+      <p class="home-subtitle">Search by subject and get relevant teachers around your real location — simple, fast and mobile friendly.</p>
+
+      <div class="home-search card border-0 shadow-lg">
+        <form id="homeSearchForm" action="{{ url_for('student.teacher_search') }}" method="GET">
+          <div class="home-field">
+            <i class="bi bi-search"></i>
+            <input id="homeSubject" type="text" name="subject" autocomplete="off" placeholder="What do you want to learn? e.g. Maths, Physics, NEET" aria-label="Subject">
+          </div>
+          <div class="home-location-row">
+            <div class="home-location-status" id="locationStatus">
+              <i class="bi bi-geo-alt-fill"></i>
+              <span>Detecting your location…</span>
+            </div>
+            <button type="button" id="detectLocationBtn" class="btn btn-sm btn-light border rounded-pill">Allow location</button>
+          </div>
+          <input type="hidden" name="latitude" id="homeLat">
+          <input type="hidden" name="longitude" id="homeLng">
+          <input type="hidden" name="radius_km" value="5">
+          <button class="btn btn-primary home-search-btn" type="submit">
+            Find teachers <i class="bi bi-arrow-right ms-1"></i>
+          </button>
+          <div id="locationHelp" class="small text-muted mt-2 d-none"></div>
+        </form>
+      </div>
+
+      <div class="home-trust-row">
+        <span><i class="bi bi-geo-alt"></i> Nearby results</span>
+        <span><i class="bi bi-search"></i> Smart subject matching</span>
+        <span><i class="bi bi-phone"></i> Mobile first</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="home-section">
+    <div class="section-heading">
+      <span class="home-kicker">Simple by design</span>
+      <h2>Everything you need to find a teacher</h2>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-geo-alt-fill"></i><div><h3>Real location</h3><p>Allow location and see teachers around you.</p></div></div></div>
+      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-stars"></i><div><h3>Relevant search</h3><p>Maths, Mathematics, Science and related terms can match the right teacher.</p></div></div></div>
+      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-chat-dots-fill"></i><div><h3>Direct messaging</h3><p>Message an accepted teacher without unnecessary extras.</p></div></div></div>
+    </div>
+  </section>
+
+  <section id="subjects" class="home-section pt-2">
+    <div class="section-heading"><span class="home-kicker">Popular searches</span><h2>Start with a subject</h2></div>
+    <div class="subject-pills">
+      {% for subject in ['Mathematics','Science','Physics','Chemistry','English','Hindi','Computer','NEET','JEE'] %}
+      <button type="button" class="subject-pill" data-subject="{{ subject }}">{{ subject }}</button>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not current_user.is_authenticated %}
+<script>
+(function () {
+  const form = document.getElementById('homeSearchForm');
+  const lat = document.getElementById('homeLat');
+  const lng = document.getElementById('homeLng');
+  const status = document.getElementById('locationStatus');
+  const help = document.getElementById('locationHelp');
+  const detect = document.getElementById('detectLocationBtn');
+  const subject = document.getElementById('homeSubject');
+
+  function setStatus(text, ok) {
+    status.innerHTML = '<i class="bi bi-' + (ok ? 'geo-alt-fill' : 'geo-alt') + '"></i><span>' + text + '</span>';
+    status.classList.toggle('is-ready', !!ok);
+  }
+
+  function locate() {
+    if (!navigator.geolocation) {
+      setStatus('Location is not supported by this browser', false);
+      help.textContent = 'You can still search after enabling location support in your browser.';
+      help.classList.remove('d-none');
+      return;
+    }
+    setStatus('Detecting your location…', false);
+    detect.disabled = true;
+    detect.textContent = 'Detecting…';
+    navigator.geolocation.getCurrentPosition(function (position) {
+      lat.value = position.coords.latitude.toFixed(7);
+      lng.value = position.coords.longitude.toFixed(7);
+      setStatus('Location detected — ready to search nearby', true);
+      help.classList.add('d-none');
+      detect.textContent = 'Refresh';
+      detect.disabled = false;
+    }, function (error) {
+      const msg = error.code === 1 ? 'Location permission was denied' : 'Could not detect your location';
+      setStatus(msg, false);
+      help.textContent = 'Tap Allow location or check your browser location permission. Your exact location is only used for nearby search.';
+      help.classList.remove('d-none');
+      detect.textContent = 'Try again';
+      detect.disabled = false;
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+  }
+
+  detect.addEventListener('click', locate);
+  // If permission was already granted, this is automatic. If not, the browser shows its normal permission prompt.
+  locate();
+
+  document.querySelectorAll('.subject-pill').forEach(function (button) {
+    button.addEventListener('click', function () {
+      subject.value = button.dataset.subject;
+      subject.focus();
+    });
+  });
+
+  form.addEventListener('submit', function (e) {
+    if (!lat.value || !lng.value) {
+      e.preventDefault();
+      setStatus('Please allow location to find nearby teachers', false);
+      help.textContent = 'Tap “Allow location” and try again.';
+      help.classList.remove('d-none');
+      detect.focus();
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Student Registration — {{ site_name }}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9">
+    <div class="text-center mb-3">
+      <span class="brand-mark d-inline-flex" style="width:52px;height:52px;font-size:1.4rem;"><i class="bi bi-person-fill"></i></span>
+    </div>
+    <div class="card auth-card p-4">
+      <h4 class="mb-1 fw-bold text-center">Student Registration</h4>
+      <p class="text-muted small text-center mb-3">Create your account to start finding tutors near you</p>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+            {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.mobile.label(class="form-label") }}
+            {{ form.mobile(class="form-control" + (" is-invalid" if form.mobile.errors else "")) }}
+            {% for e in form.mobile.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+            {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6"></div>
+          <div class="col-md-6">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+            {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+            {% for e in form.confirm_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="col-12">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows="2") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.state.label(class="form-label") }}
+            {{ form.state(class="form-control" + (" is-invalid" if form.state.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.city.label(class="form-label") }}
+            {{ form.city(class="form-control" + (" is-invalid" if form.city.errors else "")) }}
+          </div>
+          <div class="col-md-4">
+            {{ form.pincode.label(class="form-label") }}
+            {{ form.pincode(class="form-control" + (" is-invalid" if form.pincode.errors else "")) }}
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Pin your location on the map (used for teacher radius search)</label>
+            <div id="map" style="height: 280px; border-radius: 10px;"></div>
+          </div>
+          <div class="col-md-6">
+            {{ form.latitude.label(class="form-label") }}
+            {{ form.latitude(class="form-control", id="latitude", readonly=true) }}
+          </div>
+          <div class="col-md-6">
+            {{ form.longitude.label(class="form-label") }}
+            {{ form.longitude(class="form-control", id="longitude", readonly=true) }}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.student_class.label(class="form-label") }}
+            {{ form.student_class(class="form-control" + (" is-invalid" if form.student_class.errors else "")) }}
+          </div>
+          <div class="col-md-8">
+            {{ form.subjects_required.label(class="form-label") }}
+            {{ form.subjects_required(class="form-control" + (" is-invalid" if form.subjects_required.errors else ""), placeholder="e.g. Mathematics, Physics") }}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-4 btn-lg">Create Account</button>
+      </form>
+      <p class="text-center small mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-semibold">Log in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const defaultLat = 20.5937;
+  const defaultLng = 78.9629;
+  const map = L.map("map").setView([defaultLat, defaultLng], 5);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors"
+  }).addTo(map);
+
+  let marker = null;
+  let locating = false;
+
+  const latInput = document.getElementById("latitude");
+  const lngInput = document.getElementById("longitude");
+  const form = document.querySelector("form");
+  const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+  const mapElement = document.getElementById("map");
+
+  const locationBox = document.createElement("div");
+  locationBox.id = "gpsStatus";
+  locationBox.style.cssText =
+    "margin-top:10px;padding:10px 12px;border-radius:10px;" +
+    "font-size:.9rem;border:1px solid rgba(0,0,0,.1);";
+
+  if (mapElement && mapElement.parentNode) {
+    mapElement.parentNode.appendChild(locationBox);
+  }
+
+  function status(message, type) {
+    const colors = {
+      loading: "background:rgba(13,110,253,.08);color:#0d6efd;",
+      success: "background:rgba(25,135,84,.10);color:#198754;",
+      error: "background:rgba(220,53,69,.10);color:#dc3545;"
+    };
+
+    locationBox.style.cssText =
+      "margin-top:10px;padding:10px 12px;border-radius:10px;" +
+      "font-size:.9rem;border:1px solid rgba(0,0,0,.1);" +
+      (colors[type] || colors.loading);
+
+    locationBox.textContent = message;
+  }
+
+  function setMarker(lat, lng) {
+    lat = Number(lat);
+    lng = Number(lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return false;
+    }
+
+    if (marker) {
+      marker.setLatLng([lat, lng]);
+    } else {
+      marker = L.marker([lat, lng]).addTo(map);
+    }
+
+    latInput.value = lat.toFixed(6);
+    lngInput.value = lng.toFixed(6);
+
+    map.setView([lat, lng], 16);
+
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.style.opacity = "1";
+    }
+
+    status(
+      "✓ Location detected automatically: " +
+      lat.toFixed(6) + ", " + lng.toFixed(6),
+      "success"
+    );
+
+    return true;
+  }
+
+  function locationError(error) {
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.style.opacity = ".6";
+    }
+
+    let message = "Unable to detect your location.";
+
+    if (error && error.code === 1) {
+      message =
+        "⚠ Location permission denied. Please allow location access and retry.";
+    } else if (error && error.code === 2) {
+      message =
+        "⚠ Location unavailable. Please turn on GPS/location services and retry.";
+    } else if (error && error.code === 3) {
+      message =
+        "⚠ GPS detection timed out. Please retry.";
+    }
+
+    status(message, "error");
+  }
+
+  function detectLocation() {
+    if (locating) return;
+
+    if (!navigator.geolocation) {
+      locationError({code: 2});
+      return;
+    }
+
+    locating = true;
+    status("📍 Detecting your current GPS location...", "loading");
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.style.opacity = ".6";
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        locating = false;
+        setMarker(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+      },
+      function (error) {
+        locating = false;
+        locationError(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.className = "btn btn-outline-primary btn-sm mt-2";
+  retry.textContent = "📍 Use My Current Location";
+  retry.addEventListener("click", detectLocation);
+
+  if (mapElement && mapElement.parentNode) {
+    mapElement.parentNode.appendChild(retry);
+  }
+
+  map.on("click", function (e) {
+    setMarker(e.latlng.lat, e.latlng.lng);
+  });
+
+  if (form) {
+    form.addEventListener("submit", function (event) {
+      const lat = parseFloat(latInput.value);
+      const lng = parseFloat(lngInput.value);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < -90 ||
+        lat > 90 ||
+        lng < -180 ||
+        lng > 180
+      ) {
+        event.preventDefault();
+
+        status(
+          "⚠ Please allow GPS location access before registration.",
+          "error"
+        );
+
+        detectLocation();
+        return false;
+      }
+    });
+  }
+
+  detectLocation();
+
+  setTimeout(function () {
+    map.invalidateSize();
+  }, 300);
+})();
+</script>
+{% endblock %}

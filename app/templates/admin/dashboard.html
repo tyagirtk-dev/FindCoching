@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-title d-flex align-items-center justify-content-between">
+  Admin Dashboard
+  <span class="badge" style="background:var(--brand-light); color:var(--brand);">
+    <i class="bi bi-shield-check"></i> Super Admin
+  </span>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4">
+    <div class="card stat-card h-100">
+      <div class="stat-icon bg-brand"><i class="bi bi-people"></i></div>
+      <div class="stat-value">{{ stats.total_students }}</div>
+      <div class="stat-label">Students</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card stat-card h-100">
+      <div class="stat-icon bg-info-soft"><i class="bi bi-person-workspace"></i></div>
+      <div class="stat-value">{{ stats.total_teachers }}</div>
+      <div class="stat-label">Teachers</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card stat-card h-100">
+      <div class="stat-icon bg-warning-soft"><i class="bi bi-person-check"></i></div>
+      <div class="stat-value">{{ stats.pending_teachers }}</div>
+      <div class="stat-label">Pending Approvals</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card stat-card h-100">
+      <div class="stat-icon bg-danger-soft"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-value">{{ stats.pending_payments }}</div>
+      <div class="stat-label">Pending Payments</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4">
+    <div class="card stat-card h-100">
+      <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack"></i></div>
+      <div class="stat-value">{{ stats.pending_withdrawals }}</div>
+      <div class="stat-label">Withdrawal Requests</div>
+    </div>
+  </div>
+</div>
+
+{% if stats.pending_teachers or stats.pending_payments or stats.pending_withdrawals %}
+<div class="card p-3 mb-4">
+  <div class="section-heading mb-2"><i class="bi bi-bell"></i>&nbsp; Needs Your Attention</div>
+  <div class="d-flex flex-column gap-2">
+    {% if stats.pending_teachers %}
+    <a href="{{ url_for('admin.teacher_verification') }}" class="txn-status-card status-pending p-2 px-3 d-flex justify-content-between align-items-center">
+      <span class="small">{{ stats.pending_teachers }} teacher{{ 's' if stats.pending_teachers != 1 }} awaiting verification</span>
+      <i class="bi bi-chevron-right text-muted"></i>
+    </a>
+    {% endif %}
+    {% if stats.pending_payments %}
+    <a href="{{ url_for('admin.payments_list') }}" class="txn-status-card status-pending p-2 px-3 d-flex justify-content-between align-items-center">
+      <span class="small">{{ stats.pending_payments }} payment{{ 's' if stats.pending_payments != 1 }} awaiting verification</span>
+      <i class="bi bi-chevron-right text-muted"></i>
+    </a>
+    {% endif %}
+    {% if stats.pending_withdrawals %}
+    <a href="{{ url_for('admin.withdrawals_list') }}" class="txn-status-card status-pending p-2 px-3 d-flex justify-content-between align-items-center">
+      <span class="small">{{ stats.pending_withdrawals }} withdrawal request{{ 's' if stats.pending_withdrawals != 1 }} pending</span>
+      <i class="bi bi-chevron-right text-muted"></i>
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="section-heading">Manage</div>
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card p-3">
+      <div class="quick-actions" style="grid-template-columns: repeat(4, 1fr);">
+        <a class="quick-action card-tap" href="{{ url_for('admin.teacher_verification') }}"><span class="qa-icon"><i class="bi bi-person-check"></i></span> Verify Teachers</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.students_list') }}"><span class="qa-icon"><i class="bi bi-people"></i></span> Students</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.teachers_list') }}"><span class="qa-icon"><i class="bi bi-person-workspace"></i></span> Teachers</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.hires_list') }}"><span class="qa-icon"><i class="bi bi-journal-bookmark"></i></span> Hire Requests</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.attendance_list') }}"><span class="qa-icon"><i class="bi bi-calendar-check"></i></span> Attendance</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.payments_list') }}"><span class="qa-icon"><i class="bi bi-wallet2"></i></span> Payments</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.payment_settings') }}"><span class="qa-icon"><i class="bi bi-gear"></i></span> Payment Settings</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.withdrawals_list') }}"><span class="qa-icon"><i class="bi bi-cash-stack"></i></span> Withdrawals</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.wallets_overview') }}"><span class="qa-icon"><i class="bi bi-piggy-bank"></i></span> Wallets</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.commission_settings') }}"><span class="qa-icon"><i class="bi bi-percent"></i></span> Commission</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.radius_settings') }}"><span class="qa-icon"><i class="bi bi-geo-alt"></i></span> Radius Settings</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.smtp_settings') }}"><span class="qa-icon"><i class="bi bi-envelope-gear"></i></span> SMTP Settings</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.announcements') }}"><span class="qa-icon"><i class="bi bi-megaphone"></i></span> Announcements</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.contact_requests') }}"><span class="qa-icon"><i class="bi bi-envelope-open"></i></span> Contact Requests</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.complaints_list') }}"><span class="qa-icon"><i class="bi bi-flag"></i></span> Complaints</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.website_settings') }}"><span class="qa-icon"><i class="bi bi-sliders"></i></span> Website Settings</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.logs') }}"><span class="qa-icon"><i class="bi bi-journal-text"></i></span> Audit Logs</a>
+        <a class="quick-action card-tap" href="{{ url_for('admin.reports') }}"><span class="qa-icon"><i class="bi bi-graph-up"></i></span> Reports</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

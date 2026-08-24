@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Hire Requests — {{ site_name }}{% endblock %}
+{% block content %}
+<h4 class="mb-4">Hire Requests</h4>
+
+<h6>Pending</h6>
+{% if pending %}
+<div class="row g-3 mb-4">
+  {% for h in pending %}
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6>{{ h.student.user.name }}</h6>
+      <div class="small text-muted mb-2">{{ h.student.city }} · Class {{ h.student.student_class }}</div>
+      {% if h.message %}<div class="small mb-2"><em>"{{ h.message }}"</em></div>{% endif %}
+      <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('teacher.accept_hire', hire_id=h.id) }}" class="flex-fill">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-success btn-sm w-100">Accept</button>
+        </form>
+        <form method="POST" action="{{ url_for('teacher.reject_hire', hire_id=h.id) }}" class="flex-fill">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger btn-sm w-100">Reject</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted small">No pending requests.</p>
+{% endif %}
+
+<h6>History</h6>
+<div class="card p-3">
+  <div class="table-responsive">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Student</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td>{{ h.student.user.name }}</td>
+        <td><span class="badge bg-secondary">{{ h.status.value }}</span></td>
+        <td>{{ h.updated_at.strftime('%d %b %Y') if h.updated_at else '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-center text-muted py-3">No history yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</div>
+{% endblock %}

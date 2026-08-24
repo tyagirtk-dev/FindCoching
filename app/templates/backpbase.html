@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="{{ site_name }}">
+  <meta name="description" content="Find, hire and pay verified local tutors near you.">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
+  <script>
+    // Apply saved theme before first paint to avoid a light/dark flash.
+    try {
+      var t = localStorage.getItem('lt-theme');
+      if (t) document.documentElement.setAttribute('data-bs-theme', t);
+    } catch (e) {}
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{{ 'has-bottom-nav' if current_user.is_authenticated else '' }}">
+
+  <header class="app-header">
+    <div class="container-fluid px-3">
+      <nav class="navbar navbar-expand-lg p-0">
+        <a class="navbar-brand" href="{{ url_for('main.index') }}">
+          <span class="brand-mark"><i class="bi bi-mortarboard-fill"></i></span>
+          <span class="d-none d-sm-inline">{{ site_name }}</span>
+        </a>
+
+        <div class="d-flex align-items-center gap-2 order-lg-2">
+          <button class="icon-btn" id="themeToggle" type="button" title="Toggle dark mode">
+            <i class="bi bi-moon-stars"></i>
+          </button>
+          {% if current_user.is_authenticated %}
+            <a class="icon-btn" href="{{ url_for(current_user.role.value + '.notifications') if not current_user.is_super_admin else url_for('admin.dashboard') }}" title="Notifications">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger notif-dot" data-notif-badge></span>
+            </a>
+            <a class="btn btn-sm btn-outline-danger d-none d-lg-inline-flex" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right"></i> <span class="d-none d-xl-inline">Logout</span>
+            </a>
+            <button class="navbar-toggler border-0 p-0 icon-btn d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+              <i class="bi bi-list fs-4"></i>
+            </button>
+          {% else %}
+            <a class="nav-link fw-semibold d-none d-sm-inline" href="{{ url_for('auth.login') }}">Login</a>
+            <a class="btn btn-sm btn-primary" href="{{ url_for('auth.register_student') }}">Get Started</a>
+          {% endif %}
+        </div>
+
+        <div class="collapse navbar-collapse order-lg-1" id="navMain">
+          <ul class="navbar-nav app-nav-links ms-lg-3 gap-lg-1 mt-3 mt-lg-0">
+            {% if current_user.is_authenticated %}
+              {% if current_user.is_super_admin %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.students_list') }}">Students</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.teachers_list') }}">Teachers</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.hires_list') }}">Hires</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.payments_list') }}">Payments</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.withdrawals_list') }}">Withdrawals</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.reports') }}">Reports</a></li>
+              {% elif current_user.is_teacher %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.hire_requests') }}">Requests</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.my_students') }}">Students</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.mark_attendance') }}">Attendance</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.wallet') }}">Wallet</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('chat.inbox') }}">Messages</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('teacher.profile') }}">Profile</a></li>
+              {% else %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('student.dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('student.teacher_search') }}">Find Teachers</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('student.my_hires') }}">My Hires</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('student.payments') }}">Payments</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('chat.inbox') }}">Messages</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('student.profile') }}">Profile</a></li>
+              {% endif %}
+              <li class="nav-item d-lg-none mt-2">
+                <a class="btn btn-sm btn-outline-danger w-100" href="{{ url_for('auth.logout') }}">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('main.index') }}">Home</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('main.contact') }}">Contact</a></li>
+              <li class="nav-item d-sm-none"><a class="nav-link" href="{{ url_for('auth.login') }}">Login</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="container-fluid px-3" style="max-width: 1100px;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="app-footer py-4 mt-5">
+    <div class="container text-center text-muted small">
+      &copy; {{ site_name }} &mdash; Find trusted local tutors near you.
+    </div>
+  </footer>
+
+  {% if current_user.is_authenticated %}
+  <nav class="bottom-nav">
+    <div class="bn-row">
+      {% if current_user.is_super_admin %}
+        <a class="bn-item" data-path="/admin/dashboard" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/admin/students" href="{{ url_for('admin.students_list') }}"><i class="bi bi-people"></i><span>Students</span></a>
+        <a class="bn-item" data-path="/admin/teachers" href="{{ url_for('admin.teachers_list') }}"><i class="bi bi-person-workspace"></i><span>Teachers</span></a>
+        <a class="bn-item" data-path="/admin/payments" href="{{ url_for('admin.payments_list') }}"><i class="bi bi-wallet2"></i><span>Payments</span></a>
+        <a class="bn-item" data-path="/admin/reports" href="{{ url_for('admin.reports') }}"><i class="bi bi-graph-up"></i><span>More</span></a>
+      {% elif current_user.is_teacher %}
+        <a class="bn-item" data-path="/teacher/dashboard" href="{{ url_for('teacher.dashboard') }}"><i class="bi bi-house-door"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/teacher/students" href="{{ url_for('teacher.my_students') }}"><i class="bi bi-people"></i><span>Students</span></a>
+        <a class="bn-item" data-path="/teacher/attendance" href="{{ url_for('teacher.mark_attendance') }}"><i class="bi bi-calendar-check"></i><span>Attendance</span></a>
+        <a class="bn-item" data-path="/teacher/wallet" href="{{ url_for('teacher.wallet') }}"><i class="bi bi-wallet2"></i><span>Wallet</span></a>
+        <a class="bn-item" data-path="/teacher/profile" href="{{ url_for('teacher.profile') }}"><i class="bi bi-person-circle"></i><span>Profile</span></a>
+      {% else %}
+        <a class="bn-item" data-path="/student/dashboard" href="{{ url_for('student.dashboard') }}"><i class="bi bi-house-door"></i><span>Home</span></a>
+        <a class="bn-item" data-path="/student/teachers" href="{{ url_for('student.teacher_search') }}"><i class="bi bi-search"></i><span>Teachers</span></a>
+        <a class="bn-item" data-path="/student/hires" href="{{ url_for('student.my_hires') }}"><i class="bi bi-journal-bookmark"></i><span>Classes</span></a>
+        <a class="bn-item" data-path="/student/payments" href="{{ url_for('student.payments') }}"><i class="bi bi-wallet2"></i><span>Payments</span></a>
+        <a class="bn-item" data-path="/student/profile" href="{{ url_for('student.profile') }}"><i class="bi bi-person-circle"></i><span>Profile</span></a>
+      {% endif %}
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="install-banner" id="installBanner">
+    <span class="brand-mark"><i class="bi bi-mortarboard-fill"></i></span>
+    <div class="flex-fill">
+      <div class="fw-bold small">Install {{ site_name }}</div>
+      <div class="small opacity-75">Add to your home screen for the full app experience.</div>
+    </div>
+    <button class="btn btn-primary btn-sm btn-pill" id="installBannerBtn">Install</button>
+    <button class="btn btn-sm btn-pill btn-outline-light" id="installBannerDismiss"><i class="bi bi-x"></i></button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
