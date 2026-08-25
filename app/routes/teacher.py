@@ -182,10 +182,16 @@ def request_withdrawal():
             flash("Withdrawal amount exceeds your available pending balance.", "danger")
             return redirect(url_for("teacher.request_withdrawal"))
 
+        method = (form.payout_method.data or "").strip().lower()
+
         db.session.add(WithdrawalRequest(
             teacher_id=profile.id,
             amount=form.amount.data,
-            payout_method=form.payout_method.data,
+            payout_method=method,
+            account_holder_name=(form.account_holder_name.data or "").strip() or None,
+            upi_id=(form.upi_id.data or "").strip() or None,
+            bank_account_number=(form.bank_account_number.data or "").strip() or None,
+            ifsc_code=(form.ifsc_code.data or "").strip().upper() or None,
         ))
         db.session.commit()
         flash("Withdrawal request submitted for admin review.", "success")

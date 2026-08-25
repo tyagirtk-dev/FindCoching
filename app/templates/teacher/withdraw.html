@@ -1,32 +1,145 @@
 {% extends "base.html" %}
 {% block title %}Request Withdrawal — {{ site_name }}{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-sm-8 col-md-6">
     <div class="card auth-card p-4">
+
       <div class="text-center mb-3">
-        <div class="empty-state-icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="empty-state-icon">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+
         <h5 class="fw-bold mt-2 mb-1">Request Withdrawal</h5>
-        <p class="text-muted small mb-0">Available pending balance: <strong>₹{{ wallet.pending_balance if wallet else "0.00" }}</strong></p>
+
+        <p class="text-muted small mb-0">
+          Available pending balance:
+          <strong>₹{{ wallet.pending_balance if wallet else "0.00" }}</strong>
+        </p>
       </div>
-      <form method="POST">
+
+      <form method="POST" id="withdrawalForm">
         {{ form.hidden_tag() }}
+
         <div class="mb-3">
           {{ form.amount.label(class="form-label") }}
           <div class="input-icon-group">
             <i class="bi bi-currency-rupee field-icon"></i>
-            {{ form.amount(class="form-control") }}
+            {{ form.amount(class="form-control", min="1", step="0.01") }}
           </div>
+
+          {% for error in form.amount.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
         </div>
+
         <div class="mb-3">
           {{ form.payout_method.label(class="form-label") }}
-          {{ form.payout_method(class="form-select") }}
+          {{ form.payout_method(class="form-select", id="payout_method") }}
+
+          {% for error in form.payout_method.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
         </div>
+
+        <div class="mb-3">
+          {{ form.account_holder_name.label(class="form-label") }}
+          {{ form.account_holder_name(
+              class="form-control",
+              id="account_holder_name",
+              autocomplete="name",
+              placeholder="Enter account holder name"
+          ) }}
+
+          {% for error in form.account_holder_name.errors %}
+            <div class="text-danger small mt-1">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div id="upiFields">
+          <div class="mb-3">
+            {{ form.upi_id.label(class="form-label") }}
+            {{ form.upi_id(
+                class="form-control",
+                id="upi_id",
+                placeholder="example@upi",
+                autocomplete="off"
+            ) }}
+
+            {% for error in form.upi_id.errors %}
+              <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="bankFields">
+          <div class="mb-3">
+            {{ form.bank_account_number.label(class="form-label") }}
+            {{ form.bank_account_number(
+                class="form-control",
+                id="bank_account_number",
+                placeholder="Enter bank account number",
+                inputmode="numeric",
+                autocomplete="off"
+            ) }}
+
+            {% for error in form.bank_account_number.errors %}
+              <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.ifsc_code.label(class="form-label") }}
+            {{ form.ifsc_code(
+                class="form-control text-uppercase",
+                id="ifsc_code",
+                placeholder="e.g. SBIN0001234",
+                autocomplete="off"
+            ) }}
+
+            {% for error in form.ifsc_code.errors %}
+              <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary w-100 btn-lg">
           <i class="bi bi-send-check"></i> Submit Request
         </button>
       </form>
+
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  const method = document.getElementById("payout_method");
+  const upiFields = document.getElementById("upiFields");
+  const bankFields = document.getElementById("bankFields");
+
+  const upi = document.getElementById("upi_id");
+  const account = document.getElementById("bank_account_number");
+  const ifsc = document.getElementById("ifsc_code");
+
+  function updateFields() {
+    const isUpi = method.value === "upi";
+
+    upiFields.classList.toggle("d-none", !isUpi);
+    bankFields.classList.toggle("d-none", isUpi);
+
+    upi.disabled = !isUpi;
+    account.disabled = isUpi;
+    ifsc.disabled = isUpi;
+
+    upi.required = isUpi;
+    account.required = !isUpi;
+    ifsc.required = !isUpi;
+  }
+
+  method.addEventListener("change", updateFields);
+  updateFields();
+})();
+</script>
 {% endblock %}

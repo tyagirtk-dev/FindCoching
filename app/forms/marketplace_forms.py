@@ -48,8 +48,80 @@ class PaymentSettingsForm(FlaskForm):
 
 
 class WithdrawalRequestForm(FlaskForm):
-    amount = DecimalField("Withdrawal Amount", validators=[DataRequired(), NumberRange(min=1)])
-    payout_method = SelectField("Payout Method", choices=[("upi", "UPI"), ("bank", "Bank Transfer")], validators=[DataRequired()])
+    amount = DecimalField(
+        "Withdrawal Amount",
+        validators=[DataRequired(), NumberRange(min=1)]
+    )
+
+    payout_method = SelectField(
+        "Payout Method",
+        choices=[("upi", "UPI"), ("bank", "Bank Transfer")],
+        validators=[DataRequired()]
+    )
+
+    account_holder_name = StringField(
+        "Account Holder Name",
+        validators=[Optional(), Length(max=150)]
+    )
+
+    upi_id = StringField(
+        "UPI ID",
+        validators=[Optional(), Length(max=120)]
+    )
+
+    bank_account_number = StringField(
+        "Bank Account Number",
+        validators=[Optional(), Length(max=40)]
+    )
+
+    ifsc_code = StringField(
+        "IFSC Code",
+        validators=[Optional(), Length(max=20)]
+    )
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators=extra_validators):
+            return False
+
+        method = (self.payout_method.data or "").strip().lower()
+
+        if method == "upi":
+            if not (self.account_holder_name.data or "").strip():
+                self.account_holder_name.errors.append(
+                    "Account holder name is required for UPI."
+                )
+                return False
+
+            if not (self.upi_id.data or "").strip():
+                self.upi_id.errors.append(
+                    "UPI ID is required."
+                )
+                return False
+
+        elif method == "bank":
+            if not (self.account_holder_name.data or "").strip():
+                self.account_holder_name.errors.append(
+                    "Account holder name is required for bank transfer."
+                )
+                return False
+
+            if not (self.bank_account_number.data or "").strip():
+                self.bank_account_number.errors.append(
+                    "Bank account number is required."
+                )
+                return False
+
+            if not (self.ifsc_code.data or "").strip():
+                self.ifsc_code.errors.append(
+                    "IFSC code is required."
+                )
+                return False
+
+        else:
+            self.payout_method.errors.append("Invalid payout method.")
+            return False
+
+        return True
 
 
 class ReviewForm(FlaskForm):

@@ -21,6 +21,14 @@ class WithdrawalRequest(db.Model):
     status = db.Column(db.Enum(WithdrawalStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=WithdrawalStatus.REQUESTED, index=True)
 
     payout_method = db.Column(db.String(20), nullable=False, default="upi")  # upi or bank
+
+    # Teacher payout details captured with each withdrawal request.
+    # Nullable for backward compatibility with existing requests.
+    account_holder_name = db.Column(db.String(150), nullable=True)
+    upi_id = db.Column(db.String(120), nullable=True)
+    bank_account_number = db.Column(db.String(40), nullable=True)
+    ifsc_code = db.Column(db.String(20), nullable=True)
+
     admin_note = db.Column(db.String(500), nullable=True)
     transaction_reference = db.Column(db.String(120), nullable=True)  # admin fills after manual transfer
 
