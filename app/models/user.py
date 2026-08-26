@@ -30,6 +30,28 @@ class User(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
 
+    # Referral system
+    referral_code = db.Column(
+        db.String(32),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+
+    referred_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    referred_by = db.relationship(
+        "User",
+        remote_side=[id],
+        foreign_keys=[referred_by_user_id],
+        backref=db.backref("referrals", lazy="dynamic"),
+    )
+
     teacher_profile = db.relationship(
         "TeacherProfile",
         back_populates="user",

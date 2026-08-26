@@ -9,3 +9,29 @@ instance/*.sqlite
 instance/*.sqlite3
 logs/
 .DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Runtime/database
+instance/*.db
+instance/*.sqlite
+instance/*.sqlite3
+logs/
+
+# Local backups
+BACKUP_*/
+*.tar.gz
+migration_backups/
+
+# Temporary patch backups
+*.before_referral_slots
+*.before_referral_fix
+*~ 

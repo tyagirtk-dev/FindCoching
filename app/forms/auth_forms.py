@@ -7,6 +7,64 @@ from wtforms.validators import (
     DataRequired, Email, Length, EqualTo, NumberRange, Regexp, Optional
 )
 
+import json
+import re
+
+
+TIME_SLOT_PATTERN = re.compile(
+    r"^\\d{1,2}:\\d{2}-\\d{1,2}:\\d{2}$"
+)
+
+
+def validate_availability_json(form, field):
+    value = (field.data or "").strip()
+
+    if not value:
+        return
+
+    try:
+        slots = json.loads(value)
+    except (TypeError, ValueError):
+        raise ValueError("Invalid availability data.")
+
+    if not isinstance(slots, list):
+        raise ValueError("Availability must be a list.")
+
+    if len(slots) > 50:
+        raise ValueError("Maximum 50 availability slots are allowed.")
+
+    seen = set()
+
+    for slot in slots:
+        if not isinstance(slot, dict):
+            raise ValueError("Invalid availability slot.")
+
+        weekday = slot.get("weekday")
+        start = slot.get("start")
+        end = slot.get("end")
+
+        if not isinstance(weekday, int) or not 0 <= weekday <= 6:
+            raise ValueError("Invalid weekday.")
+
+        if not isinstance(start, str) or not isinstance(end, str):
+            raise ValueError("Invalid slot time.")
+
+        if not re.match(r"^([01]\\d|2[0-3]):[0-5]\\d$", start):
+            raise ValueError("Invalid start time.")
+
+        if not re.match(r"^([01]\\d|2[0-3]):[0-5]\\d$", end):
+            raise ValueError("Invalid end time.")
+
+        if start >= end:
+            raise ValueError("Slot end time must be after start time.")
+
+        key = (weekday, start, end)
+
+        if key in seen:
+            raise ValueError("Duplicate availability slot.")
+
+        seen.add(key)
+
 
 MOBILE_REGEX = r"^[0-9]{10}$"
 
@@ -31,7 +89,20 @@ class StudentRegistrationForm(FlaskForm):
     longitude = FloatField("Longitude", validators=[DataRequired(), NumberRange(min=-180, max=180)])
 
     student_class = StringField("Class", validators=[DataRequired(), Length(max=40)])
-    subjects_required = StringField("Subjects Required (comma separated)", validators=[DataRequired(), Length(max=500)])
+    subjects_required = StringField(
+        "Subjects Required (comma separated)",
+        validators=[DataRequired(), Length(max=500)],
+    )
+
+    referral_code = StringField(
+        "Referral Code",
+        validators=[Optional(), Length(max=32)],
+    )
+
+    availability_json = StringField(
+        "Preferred Availability",
+        validators=[Optional(), validate_availability_json],
+    )
 
 
 class TeacherRegistrationForm(FlaskForm):
@@ -59,7 +130,20 @@ class TeacherRegistrationForm(FlaskForm):
     bank_account_holder = StringField("Account Holder Name", validators=[Optional(), Length(max=120)])
     bank_account_number = StringField("Bank Account Number", validators=[Optional(), Length(max=40)])
     bank_ifsc = StringField("IFSC Code", validators=[Optional(), Length(max=20)])
-    bank_name = StringField("Bank Name", validators=[Optional(), Length(max=120)])
+    bank_name = StringField(
+        "Bank Name",
+        validators=[Optional(), Length(max=120)],
+    )
+
+    referral_code = StringField(
+        "Referral Code",
+        validators=[Optional(), Length(max=32)],
+    )
+
+    availability_json = StringField(
+        "Teaching Availability",
+        validators=[Optional(), validate_availability_json],
+    )
 
 
 class OtpVerifyForm(FlaskForm):

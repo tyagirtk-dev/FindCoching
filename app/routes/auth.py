@@ -1,4 +1,7 @@
 from datetime import datetime
+import json
+import secrets
+import string
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
@@ -14,11 +17,70 @@ from app.models.teacher_profile import TeacherProfile, TeacherStatus
 from app.models.wallet import Wallet
 from app.models.otp import OtpPurpose
 from app.models.audit_log import AuditLog
+from app.models.teacher_availability import TeacherAvailabilitySlot
+from app.models.student_availability import StudentAvailabilitySlot
 from app.services.otp_service import issue_otp, verify_otp
 from app.services.email_service import EmailNotConfigured
 from app.utils.file_upload import save_upload, InvalidFileError
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
+
+def generate_referral_code():
+    alphabet = string.ascii_uppercase + string.digits
+
+    for _ in range(20):
+        code = "RTK-" + "".join(secrets.choice(alphabet) for _ in range(8))
+
+        if not User.query.filter_by(referral_code=code).first():
+            return code
+
+    raise RuntimeError("Unable to generate a unique referral code.")
+
+
+def get_referrer(referral_code):
+    code = (referral_code or "").strip().upper()
+
+    if not code:
+        return None
+
+    return User.query.filter_by(referral_code=code).first()
+
+
+def save_student_slots(profile, availability_json):
+    if not availability_json:
+        return
+
+    slots = json.loads(availability_json)
+
+    for slot in slots:
+        db.session.add(
+            StudentAvailabilitySlot(
+                student_id=profile.id,
+                weekday=slot["weekday"],
+                start_time=slot["start"],
+                end_time=slot["end"],
+            )
+        )
+
+
+def save_teacher_slots(profile, availability_json):
+    if not availability_json:
+        return
+
+    slots = json.loads(availability_json)
+
+    for slot in slots:
+        db.session.add(
+            TeacherAvailabilitySlot(
+                teacher_id=profile.id,
+                weekday=slot["weekday"],
+                start_time=slot["start"],
+                end_time=slot["end"],
+            )
+        )
+
+
+
 
 
 @auth_bp.route("/register/student", methods=["GET", "POST"])
@@ -32,11 +94,18 @@ def register_student():
             flash("An account with this email or mobile number already exists.", "danger")
             return render_template("auth/register_student.html", form=form)
 
+        referrer = get_referrer(form.referral_code.data)
+
+        if form.referral_code.data and not referrer:
+            flash("Invalid referral code.", "danger")
+            return render_template("auth/register_student.html", form=form)
+
         user = User(
             name=form.name.data.strip(),
             email=form.email.data.lower().strip(),
             mobile=form.mobile.data.strip(),
             role=RoleEnum.STUDENT,
+            referred_by=referrer,
         )
         user.set_password(form.password.data)
         db.session.add(user)
@@ -54,6 +123,13 @@ def register_student():
             subjects_required=form.subjects_required.data.strip(),
         )
         db.session.add(profile)
+
+        # Generate the user's own referral code after the ID exists.
+        db.session.flush()
+        user.referral_code = generate_referral_code()
+
+        save_student_slots(profile, form.availability_json.data)
+
         db.session.commit()
 
         AuditLog.log(user.id, "student_registered", ip_address=request.remote_addr)
@@ -91,11 +167,18 @@ def register_teacher():
             flash(str(e), "danger")
             return render_template("auth/register_teacher.html", form=form)
 
+        referrer = get_referrer(form.referral_code.data)
+
+        if form.referral_code.data and not referrer:
+            flash("Invalid referral code.", "danger")
+            return render_template("auth/register_teacher.html", form=form)
+
         user = User(
             name=form.name.data.strip(),
             email=form.email.data.lower().strip(),
             mobile=form.mobile.data.strip(),
             role=RoleEnum.TEACHER,
+            referred_by=referrer,
         )
         user.set_password(form.password.data)
         db.session.add(user)
@@ -123,6 +206,11 @@ def register_teacher():
         )
         db.session.add(profile)
         db.session.flush()
+
+        # Generate referral code only after user has a database ID.
+        user.referral_code = generate_referral_code()
+
+        save_teacher_slots(profile, form.availability_json.data)
 
         wallet = Wallet(teacher_id=profile.id)
         db.session.add(wallet)
@@ -175,7 +263,7 @@ def verify_email():
     return render_template("auth/verify_email.html", form=form, email=user.email)
 
 
-@auth_bp.route("/resend-otp")
+@auth_bp.route("/resend-otp", methods=["POST"])
 def resend_otp():
     user_id = session.get("pending_verification_user_id")
     if not user_id:
@@ -231,8 +319,11 @@ def login():
         AuditLog.log(user.id, "login_success", ip_address=request.remote_addr)
         db.session.commit()
 
-        next_url = request.args.get("next")
-        if next_url:
+        # Never redirect to an arbitrary external URL supplied by the client.
+        # Only allow local relative paths.
+        next_url = request.args.get("next", "").strip()
+
+        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
             return redirect(next_url)
         if user.role == RoleEnum.SUPER_ADMIN:
             return redirect(url_for("admin.dashboard"))

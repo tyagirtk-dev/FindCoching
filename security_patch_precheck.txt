@@ -1,0 +1,22 @@
+LOCAL TUTOR SECURITY PATCH PRECHECK
+Generated: 2026-08-27T00:26:20.804775
+
+[OK] app/routes/auth.py
+[OK] app/routes/teacher.py
+[OK] app/routes/student.py
+[OK] app/routes/admin.py
+[OK] app/routes/api.py
+[OK] app/services/wallet_service.py
+[OK] app/services/otp_service.py
+[OK] app/services/email_service.py
+[OK] app/services/geo_service.py
+[OK] app/utils/file_upload.py
+[OK] app/utils/decorators.py
+[OK] app/models/user.py
+[OK] app/models/teacher_profile.py
+[OK] app/models/student_profile.py
+[OK] app/models/hire_request.py
+[OK] app/models/payment_transaction.py
+[OK] app/models/wallet.py
+[OK] app/models/otp.py
+[OK] app/models/payment_settings.py

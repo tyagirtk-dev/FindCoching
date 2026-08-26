@@ -114,7 +114,189 @@
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary w-100 mt-4 btn-lg">Submit Application</button>
+        
+<!-- Referral + Availability -->
+<div class="card border-0 shadow-sm rounded-4 mt-4">
+  <div class="card-body p-4">
+
+    <h5 class="fw-bold mb-3">
+      <i class="bi bi-people me-2"></i>
+      Referral
+    </h5>
+
+    <label class="form-label">Referral Code <span class="text-muted">(optional)</span></label>
+    {{ form.referral_code(class="form-control", placeholder="Example: RTK-AB12CD34") }}
+
+    <hr class="my-4">
+
+    <h5 class="fw-bold mb-2">
+      <i class="bi bi-clock me-2"></i>
+      Availability
+    </h5>
+
+    <p class="text-muted small mb-3">
+      Add the days and times when you are normally available.
+      You can add multiple slots.
+    </p>
+
+    {{ form.availability_json(type="hidden", id="availability_json") }}
+
+    <div id="availabilityRows"></div>
+
+    <button type="button"
+            class="btn btn-outline-primary btn-sm rounded-pill"
+            id="addAvailabilitySlot">
+      <i class="bi bi-plus-circle me-1"></i>
+      Add Time Slot
+    </button>
+
+    <div class="small text-muted mt-3">
+      Example: Monday 5:00 PM – 6:00 PM
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  const hidden = document.getElementById("availability_json");
+  const rows = document.getElementById("availabilityRows");
+  const addBtn = document.getElementById("addAvailabilitySlot");
+
+  if (!hidden || !rows || !addBtn) return;
+
+  const days = [
+    ["0", "Monday"],
+    ["1", "Tuesday"],
+    ["2", "Wednesday"],
+    ["3", "Thursday"],
+    ["4", "Friday"],
+    ["5", "Saturday"],
+    ["6", "Sunday"]
+  ];
+
+  function createTimeOptions() {
+    let html = '<option value="">Time</option>';
+
+    for (let h = 0; h < 24; h++) {
+      for (const m of [0, 30]) {
+        const hh = String(h).padStart(2, "0");
+        const mm = String(m).padStart(2, "0");
+        const value = hh + ":" + mm;
+
+        let hour = h % 12 || 12;
+        let suffix = h < 12 ? "AM" : "PM";
+
+        html += '<option value="' + value + '">' +
+          hour + ":" + mm + " " + suffix +
+          "</option>";
+      }
+    }
+
+    return html;
+  }
+
+  function addRow(data) {
+    data = data || {};
+
+    const row = document.createElement("div");
+    row.className = "row g-2 align-items-end mb-2 availability-row";
+
+    let dayOptions = '<option value="">Day</option>';
+
+    days.forEach(function (day) {
+      const selected =
+        String(data.weekday) === day[0] ? " selected" : "";
+
+      dayOptions +=
+        '<option value="' + day[0] + '"' + selected + '>' +
+        day[1] +
+        "</option>";
+    });
+
+    row.innerHTML = `
+      <div class="col-12 col-md-4">
+        <label class="form-label small">Day</label>
+        <select class="form-select slot-day">
+          ${dayOptions}
+        </select>
+      </div>
+
+      <div class="col-5 col-md-3">
+        <label class="form-label small">Start</label>
+        <select class="form-select slot-start">
+          ${createTimeOptions()}
+        </select>
+      </div>
+
+      <div class="col-5 col-md-3">
+        <label class="form-label small">End</label>
+        <select class="form-select slot-end">
+          ${createTimeOptions()}
+        </select>
+      </div>
+
+      <div class="col-2 col-md-2">
+        <button type="button"
+                class="btn btn-outline-danger w-100 remove-slot"
+                aria-label="Remove slot">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    `;
+
+    row.querySelector(".slot-start").value = data.start || "";
+    row.querySelector(".slot-end").value = data.end || "";
+
+    row.querySelector(".remove-slot").addEventListener("click", function () {
+      row.remove();
+      sync();
+    });
+
+    ["change", "input"].forEach(function (eventName) {
+      row.addEventListener(eventName, sync);
+    });
+
+    rows.appendChild(row);
+  }
+
+  function sync() {
+    const slots = [];
+
+    rows.querySelectorAll(".availability-row").forEach(function (row) {
+      const day = row.querySelector(".slot-day").value;
+      const start = row.querySelector(".slot-start").value;
+      const end = row.querySelector(".slot-end").value;
+
+      if (day !== "" && start !== "" && end !== "") {
+        slots.push({
+          weekday: Number(day),
+          start: start,
+          end: end
+        });
+      }
+    });
+
+    hidden.value = JSON.stringify(slots);
+  }
+
+  addBtn.addEventListener("click", function () {
+    addRow();
+  });
+
+  try {
+    const existing = JSON.parse(hidden.value || "[]");
+
+    if (Array.isArray(existing)) {
+      existing.forEach(addRow);
+    }
+  } catch (e) {
+    console.warn("Could not restore availability slots");
+  }
+})();
+</script>
+
+<button type="submit" class="btn btn-primary w-100 mt-4 btn-lg">Submit Application</button>
       </form>
       <p class="text-center small mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}" class="fw-semibold">Log in</a></p>
     </div>

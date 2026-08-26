@@ -71,7 +71,12 @@ def hire_requests():
 @teacher_required
 def accept_hire(hire_id):
     profile = current_user.teacher_profile
-    hire = HireRequest.query.filter_by(id=hire_id, teacher_id=profile.id).first_or_404()
+    hire = HireRequest.query.filter_by(
+        id=hire_id,
+        teacher_id=profile.id,
+        status=HireStatus.PENDING,
+    ).first_or_404()
+
     hire.status = HireStatus.ACCEPTED
     hire.responded_at = datetime.utcnow()
     db.session.commit()
@@ -89,7 +94,12 @@ def accept_hire(hire_id):
 @teacher_required
 def reject_hire(hire_id):
     profile = current_user.teacher_profile
-    hire = HireRequest.query.filter_by(id=hire_id, teacher_id=profile.id).first_or_404()
+    hire = HireRequest.query.filter_by(
+        id=hire_id,
+        teacher_id=profile.id,
+        status=HireStatus.PENDING,
+    ).first_or_404()
+
     hire.status = HireStatus.REJECTED
     hire.responded_at = datetime.utcnow()
     db.session.commit()

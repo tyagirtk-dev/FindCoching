@@ -57,7 +57,19 @@ class TeacherProfile(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship("User", back_populates="teacher_profile", foreign_keys=[user_id])
-    wallet = db.relationship("Wallet", back_populates="teacher_profile", uselist=False, cascade="all, delete-orphan")
+    wallet = db.relationship(
+        "Wallet",
+        back_populates="teacher_profile",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    availability_slots = db.relationship(
+        "TeacherAvailabilitySlot",
+        back_populates="teacher",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         db.Index("ix_teacher_lat_lng", "latitude", "longitude"),

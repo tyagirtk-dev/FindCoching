@@ -1,89 +1,2120 @@
 {% extends "base.html" %}
-{% block title %}{{ site_name }} — Find a Tutor Near You{% endblock %}
+
+{% block title %}{{ site_name }} — Find a Trusted Tutor Near You{% endblock %}
+
 {% block content %}
+
 {% if current_user.is_authenticated %}
-<div class="home-wrap py-4">
-  <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
-    <span class="home-kicker">Welcome back</span>
-    <h1 class="h3 fw-bold mt-2 mb-2">{{ current_user.name }}</h1>
-    <p class="text-muted mb-4">Continue from your dashboard.</p>
-    {% if current_user.is_teacher %}
-      <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-primary rounded-pill px-4">Teacher Dashboard</a>
-    {% elif current_user.is_super_admin %}
-      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary rounded-pill px-4">Admin Dashboard</a>
-    {% else %}
-      <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary rounded-pill px-4">Student Dashboard</a>
-    {% endif %}
+
+<div class="container py-5">
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="p-4 p-md-5 text-center">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+           style="width:64px;height:64px;background:var(--brand-light);color:var(--brand);">
+        <i class="bi bi-person-check-fill fs-3"></i>
+      </div>
+
+      <div class="text-uppercase small fw-bold text-primary mb-2">
+        Welcome back
+      </div>
+
+      <h1 class="fw-bold mb-2">
+        {{ current_user.name }}
+      </h1>
+
+      <p class="text-muted mb-4">
+        Continue managing your learning, teaching, or platform activity.
+      </p>
+
+      {% if current_user.is_teacher %}
+        <a href="{{ url_for('teacher.dashboard') }}"
+           class="btn btn-primary btn-lg rounded-pill px-4">
+          <i class="bi bi-grid-1x2-fill me-2"></i>
+          Teacher Dashboard
+        </a>
+      {% elif current_user.is_super_admin %}
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="btn btn-primary btn-lg rounded-pill px-4">
+          <i class="bi bi-speedometer2 me-2"></i>
+          Admin Dashboard
+        </a>
+      {% else %}
+        <a href="{{ url_for('student.dashboard') }}"
+           class="btn btn-primary btn-lg rounded-pill px-4">
+          <i class="bi bi-grid-1x2-fill me-2"></i>
+          Student Dashboard
+        </a>
+      {% endif %}
+    </div>
   </div>
 </div>
+
 {% else %}
-<div class="home-wrap">
-  <section class="home-hero">
-    <div class="home-hero-glow"></div>
-    <div class="position-relative">
-      <span class="home-kicker"><i class="bi bi-patch-check-fill me-1"></i> Local tutor marketplace</span>
-      <h1 class="home-title">Find the right teacher <span>near you.</span></h1>
-      <p class="home-subtitle">Search by subject and get relevant teachers around your real location — simple, fast and mobile friendly.</p>
 
-      <div class="home-search card border-0 shadow-lg">
-        <form id="homeSearchForm" action="{{ url_for('student.teacher_search') }}" method="GET">
-          <div class="home-field">
-            <i class="bi bi-search"></i>
-            <input id="homeSubject" type="text" name="subject" autocomplete="off" placeholder="What do you want to learn? e.g. Maths, Physics, NEET" aria-label="Subject">
+<div class="find-home">
+
+  <!-- =========================================================
+       HERO
+  ========================================================== -->
+  <section class="find-hero">
+    <div class="find-hero-orb orb-one"></div>
+    <div class="find-hero-orb orb-two"></div>
+
+    <div class="container position-relative">
+      <div class="row align-items-center g-5">
+
+        <div class="col-lg-7">
+
+          <div class="find-badge">
+            <i class="bi bi-patch-check-fill"></i>
+            Local learning, made simpler
           </div>
-          <div class="home-location-row">
-            <div class="home-location-status" id="locationStatus">
+
+          <h1 class="find-hero-title">
+            Find a trusted
+            <span>tutor near you.</span>
+          </h1>
+
+          <p class="find-hero-text">
+            Discover teachers by subject and location.
+            Connect with the right educator and make learning
+            more personal, convenient and local.
+          </p>
+
+          <!-- SEARCH CARD -->
+          <div class="find-search-card">
+
+            <form id="homeSearchForm"
+                  action="{{ url_for('student.teacher_search') }}"
+                  method="GET">
+
+              <div class="find-search-input">
+                <i class="bi bi-search"></i>
+
+                <input
+                  id="homeSubject"
+                  type="text"
+                  name="subject"
+                  autocomplete="off"
+                  placeholder="What do you want to learn?"
+                  aria-label="Subject"
+                >
+              </div>
+
+              <div class="find-location-row">
+
+                <div class="find-location-status"
+                     id="locationStatus">
+
+                  <i class="bi bi-geo-alt-fill"></i>
+
+                  <span>
+                    Detecting your location…
+                  </span>
+
+                </div>
+
+                <button
+                  type="button"
+                  id="detectLocationBtn"
+                  class="btn btn-sm btn-light border rounded-pill px-3">
+                  <i class="bi bi-crosshair me-1"></i>
+                  Allow location
+                </button>
+
+              </div>
+
+              <input type="hidden"
+                     name="latitude"
+                     id="homeLat">
+
+              <input type="hidden"
+                     name="longitude"
+                     id="homeLng">
+
+              <input type="hidden"
+                     name="radius_km"
+                     value="5">
+
+              <button
+                class="btn btn-primary find-search-button"
+                type="submit">
+
+                Find Teachers
+                <i class="bi bi-arrow-right ms-2"></i>
+
+              </button>
+
+              <div
+                id="locationHelp"
+                class="small text-muted mt-2 d-none">
+              </div>
+
+            </form>
+
+          </div>
+
+          <div class="find-trust-items">
+
+            <span>
               <i class="bi bi-geo-alt-fill"></i>
-              <span>Detecting your location…</span>
-            </div>
-            <button type="button" id="detectLocationBtn" class="btn btn-sm btn-light border rounded-pill">Allow location</button>
+              Nearby discovery
+            </span>
+
+            <span>
+              <i class="bi bi-mortarboard-fill"></i>
+              Subject based search
+            </span>
+
+            <span>
+              <i class="bi bi-phone-fill"></i>
+              Mobile friendly
+            </span>
+
           </div>
-          <input type="hidden" name="latitude" id="homeLat">
-          <input type="hidden" name="longitude" id="homeLng">
-          <input type="hidden" name="radius_km" value="5">
-          <button class="btn btn-primary home-search-btn" type="submit">
-            Find teachers <i class="bi bi-arrow-right ms-1"></i>
-          </button>
-          <div id="locationHelp" class="small text-muted mt-2 d-none"></div>
-        </form>
+
+        </div>
+
+        <!-- HERO VISUAL -->
+        <div class="col-lg-5 d-none d-lg-block">
+
+          <div class="find-hero-visual">
+
+            <div class="visual-main-card">
+
+              <div class="visual-top">
+                <div class="visual-avatar">
+                  <i class="bi bi-person-fill"></i>
+                </div>
+
+                <div>
+                  <div class="small opacity-75">
+                    Find your next teacher
+                  </div>
+
+                  <strong>
+                    Learn locally
+                  </strong>
+                </div>
+
+                <span class="visual-check">
+                  <i class="bi bi-check-lg"></i>
+                </span>
+              </div>
+
+              <div class="visual-map">
+
+                <div class="map-grid"></div>
+
+                <div class="map-pin pin-one">
+                  <i class="bi bi-geo-alt-fill"></i>
+                </div>
+
+                <div class="map-pin pin-two">
+                  <i class="bi bi-geo-alt-fill"></i>
+                </div>
+
+                <div class="map-pin pin-three">
+                  <i class="bi bi-geo-alt-fill"></i>
+                </div>
+
+                <div class="map-center">
+                  <i class="bi bi-crosshair"></i>
+                </div>
+
+              </div>
+
+              <div class="visual-search-row">
+                <span>
+                  <i class="bi bi-search me-2"></i>
+                  Mathematics
+                </span>
+
+                <span class="distance-pill">
+                  Within 5 km
+                </span>
+              </div>
+
+            </div>
+
+            <div class="floating-card floating-card-one">
+              <i class="bi bi-patch-check-fill"></i>
+              <div>
+                <strong>Teacher discovery</strong>
+                <small>Based on your location</small>
+              </div>
+            </div>
+
+            <div class="floating-card floating-card-two">
+              <i class="bi bi-chat-dots-fill"></i>
+              <div>
+                <strong>Connect directly</strong>
+                <small>Simple student–teacher communication</small>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =========================================================
+       QUICK BENEFITS
+  ========================================================== -->
+  <section class="find-section find-benefits-section">
+
+    <div class="container">
+
+      <div class="row g-3">
+
+        <div class="col-12 col-md-4">
+          <div class="find-benefit-card">
+
+            <div class="find-benefit-icon">
+              <i class="bi bi-geo-alt-fill"></i>
+            </div>
+
+            <div>
+              <h3>Find teachers nearby</h3>
+              <p>
+                Use your location to discover relevant teachers
+                around your area.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="find-benefit-card">
+
+            <div class="find-benefit-icon">
+              <i class="bi bi-person-check-fill"></i>
+            </div>
+
+            <div>
+              <h3>Choose with confidence</h3>
+              <p>
+                Explore teacher information and make a more
+                informed learning decision.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="find-benefit-card">
+
+            <div class="find-benefit-icon">
+              <i class="bi bi-chat-dots-fill"></i>
+            </div>
+
+            <div>
+              <h3>Connect directly</h3>
+              <p>
+                Keep your student–teacher communication
+                simple and convenient.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
-      <div class="home-trust-row">
-        <span><i class="bi bi-geo-alt"></i> Nearby results</span>
-        <span><i class="bi bi-search"></i> Smart subject matching</span>
-        <span><i class="bi bi-phone"></i> Mobile first</span>
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       HOW IT WORKS
+  ========================================================== -->
+  <section id="how-it-works"
+           class="find-section">
+
+    <div class="container">
+
+      <div class="find-section-heading text-center">
+
+        <span class="find-section-label">
+          HOW IT WORKS
+        </span>
+
+        <h2>
+          Start learning in three simple steps
+        </h2>
+
+        <p>
+          FindCoching keeps the journey from discovery to
+          learning straightforward.
+        </p>
+
       </div>
+
+      <div class="row g-4 mt-2">
+
+        <div class="col-md-4">
+          <div class="find-step-card">
+
+            <div class="find-step-number">
+              01
+            </div>
+
+            <div class="find-step-icon">
+              <i class="bi bi-search"></i>
+            </div>
+
+            <h3>Find</h3>
+
+            <p>
+              Choose a subject and allow location access
+              to discover teachers around you.
+            </p>
+
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="find-step-card">
+
+            <div class="find-step-number">
+              02
+            </div>
+
+            <div class="find-step-icon">
+              <i class="bi bi-person-lines-fill"></i>
+            </div>
+
+            <h3>Connect</h3>
+
+            <p>
+              Explore available teachers and send a
+              hire request when you find the right match.
+            </p>
+
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="find-step-card">
+
+            <div class="find-step-number">
+              03
+            </div>
+
+            <div class="find-step-icon">
+              <i class="bi bi-mortarboard-fill"></i>
+            </div>
+
+            <h3>Learn</h3>
+
+            <p>
+              Manage your learning journey with attendance,
+              communication, payments and reviews.
+            </p>
+
+          </div>
+        </div>
+
+      </div>
+
     </div>
+
   </section>
 
-  <section id="features" class="home-section">
-    <div class="section-heading">
-      <span class="home-kicker">Simple by design</span>
-      <h2>Everything you need to find a teacher</h2>
+
+  <!-- =========================================================
+       STUDENT / PARENT
+  ========================================================== -->
+  <section class="find-section find-audience-section">
+
+    <div class="container">
+
+      <div class="row align-items-center g-5">
+
+        <div class="col-lg-6">
+
+          <span class="find-section-label">
+            FOR STUDENTS & PARENTS
+          </span>
+
+          <h2 class="find-audience-title">
+            Learning that stays
+            <span>close to home.</span>
+          </h2>
+
+          <p class="find-audience-text">
+            Discover teachers based on what you want to learn
+            and where you live. Keep important parts of your
+            learning journey in one place.
+          </p>
+
+          <div class="find-check-list">
+
+            <div>
+              <i class="bi bi-check-circle-fill"></i>
+              Nearby teacher discovery
+            </div>
+
+            <div>
+              <i class="bi bi-check-circle-fill"></i>
+              Subject-based search
+            </div>
+
+            <div>
+              <i class="bi bi-check-circle-fill"></i>
+              Hire request workflow
+            </div>
+
+            <div>
+              <i class="bi bi-check-circle-fill"></i>
+              Attendance and payment records
+            </div>
+
+            <div>
+              <i class="bi bi-check-circle-fill"></i>
+              Student–teacher messaging
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="col-lg-6">
+
+          <div class="find-dashboard-preview">
+
+            <div class="preview-header">
+              <div>
+                <span>Student workspace</span>
+                <strong>Learning overview</strong>
+              </div>
+
+              <div class="preview-avatar">
+                <i class="bi bi-person-fill"></i>
+              </div>
+            </div>
+
+            <div class="preview-search">
+              <i class="bi bi-search"></i>
+              Search teachers
+            </div>
+
+            <div class="preview-teacher">
+
+              <div class="preview-teacher-avatar">
+                <i class="bi bi-person-fill"></i>
+              </div>
+
+              <div class="flex-grow-1">
+                <strong>Teacher profile</strong>
+                <small>
+                  Subject • Nearby
+                </small>
+              </div>
+
+              <span class="preview-status">
+                Available
+              </span>
+
+            </div>
+
+            <div class="preview-stats">
+
+              <div>
+                <strong>
+                  <i class="bi bi-calendar-check"></i>
+                </strong>
+                <small>Attendance</small>
+              </div>
+
+              <div>
+                <strong>
+                  <i class="bi bi-wallet2"></i>
+                </strong>
+                <small>Payments</small>
+              </div>
+
+              <div>
+                <strong>
+                  <i class="bi bi-chat-dots"></i>
+                </strong>
+                <small>Messages</small>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
-    <div class="row g-3">
-      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-geo-alt-fill"></i><div><h3>Real location</h3><p>Allow location and see teachers around you.</p></div></div></div>
-      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-stars"></i><div><h3>Relevant search</h3><p>Maths, Mathematics, Science and related terms can match the right teacher.</p></div></div></div>
-      <div class="col-12 col-md-4"><div class="home-feature"><i class="bi bi-chat-dots-fill"></i><div><h3>Direct messaging</h3><p>Message an accepted teacher without unnecessary extras.</p></div></div></div>
-    </div>
+
   </section>
 
-  <section id="subjects" class="home-section pt-2">
-    <div class="section-heading"><span class="home-kicker">Popular searches</span><h2>Start with a subject</h2></div>
-    <div class="subject-pills">
-      {% for subject in ['Mathematics','Science','Physics','Chemistry','English','Hindi','Computer','NEET','JEE'] %}
-      <button type="button" class="subject-pill" data-subject="{{ subject }}">{{ subject }}</button>
-      {% endfor %}
+
+  <!-- =========================================================
+       TEACHERS
+  ========================================================== -->
+  <section class="find-section">
+
+    <div class="container">
+
+      <div class="find-teacher-banner">
+
+        <div class="row align-items-center g-4">
+
+          <div class="col-lg-8">
+
+            <span class="find-section-label">
+              FOR TEACHERS
+            </span>
+
+            <h2>
+              Turn your teaching skills
+              into a local opportunity.
+            </h2>
+
+            <p>
+              Create your teacher profile, get discovered by
+              nearby students, manage requests and keep track
+              of your teaching activity.
+            </p>
+
+            <div class="find-teacher-features">
+
+              <span>
+                <i class="bi bi-check-circle-fill"></i>
+                Teacher profile
+              </span>
+
+              <span>
+                <i class="bi bi-check-circle-fill"></i>
+                Hire requests
+              </span>
+
+              <span>
+                <i class="bi bi-check-circle-fill"></i>
+                Student management
+              </span>
+
+              <span>
+                <i class="bi bi-check-circle-fill"></i>
+                Attendance
+              </span>
+
+              <span>
+                <i class="bi bi-check-circle-fill"></i>
+                Earnings & withdrawals
+              </span>
+
+            </div>
+
+          </div>
+
+          <div class="col-lg-4 text-lg-end">
+
+            <a href="{{ url_for('auth.register_student') }}"
+               class="btn btn-light btn-lg rounded-pill px-4">
+
+              Join as a Teacher
+              <i class="bi bi-arrow-right ms-2"></i>
+
+            </a>
+
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
+
   </section>
+
+
+  <!-- =========================================================
+       SUBJECTS
+  ========================================================== -->
+  <section id="subjects"
+           class="find-section">
+
+    <div class="container">
+
+      <div class="find-section-heading">
+
+        <div>
+
+          <span class="find-section-label">
+            POPULAR SUBJECTS
+          </span>
+
+          <h2>
+            What do you want to learn?
+          </h2>
+
+        </div>
+
+        <p>
+          Start your search with a popular subject.
+        </p>
+
+      </div>
+
+      <div class="find-subject-grid">
+
+        {% for subject in [
+          'Mathematics',
+          'Science',
+          'Physics',
+          'Chemistry',
+          'English',
+          'Hindi',
+          'Computer',
+          'NEET',
+          'JEE'
+        ] %}
+
+        <button
+          type="button"
+          class="find-subject-card"
+          data-subject="{{ subject }}">
+
+          <span class="find-subject-icon">
+
+            {% if subject == 'Mathematics' %}
+              <i class="bi bi-calculator-fill"></i>
+            {% elif subject == 'Science' %}
+              <i class="bi bi-lightbulb-fill"></i>
+            {% elif subject == 'Physics' %}
+              <i class="bi bi-atom"></i>
+            {% elif subject == 'Chemistry' %}
+              <i class="bi bi-eyedropper"></i>
+            {% elif subject == 'English' %}
+              <i class="bi bi-book-fill"></i>
+            {% elif subject == 'Hindi' %}
+              <i class="bi bi-translate"></i>
+            {% elif subject == 'Computer' %}
+              <i class="bi bi-pc-display"></i>
+            {% elif subject == 'NEET' %}
+              <i class="bi bi-heart-pulse-fill"></i>
+            {% else %}
+              <i class="bi bi-mortarboard-fill"></i>
+            {% endif %}
+
+          </span>
+
+          <span class="find-subject-name">
+            {{ subject }}
+          </span>
+
+          <i class="bi bi-arrow-up-right find-subject-arrow"></i>
+
+        </button>
+
+        {% endfor %}
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       TRUST
+  ========================================================== -->
+  <section class="find-section find-trust-section">
+
+    <div class="container">
+
+      <div class="find-section-heading text-center">
+
+        <span class="find-section-label">
+          BUILT FOR TRUST
+        </span>
+
+        <h2>
+          A platform designed around real learning workflows
+        </h2>
+
+        <p>
+          From discovery to communication and payments,
+          important activities stay organized in one place.
+        </p>
+
+      </div>
+
+      <div class="row g-3 mt-3">
+
+        <div class="col-6 col-lg-3">
+          <div class="find-trust-card">
+            <i class="bi bi-shield-lock-fill"></i>
+            <strong>Secure access</strong>
+            <span>Account and role-based protection</span>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="find-trust-card">
+            <i class="bi bi-person-check-fill"></i>
+            <strong>Teacher verification</strong>
+            <span>Verification workflow for teacher accounts</span>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="find-trust-card">
+            <i class="bi bi-wallet2"></i>
+            <strong>Payment workflow</strong>
+            <span>Organized payment and withdrawal records</span>
+          </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <div class="find-trust-card">
+            <i class="bi bi-bell-fill"></i>
+            <strong>Notifications</strong>
+            <span>Stay updated about important activity</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       FAQ
+  ========================================================== -->
+  <section id="faq"
+           class="find-section">
+
+    <div class="container">
+
+      <div class="find-section-heading text-center">
+
+        <span class="find-section-label">
+          FAQ
+        </span>
+
+        <h2>
+          Frequently asked questions
+        </h2>
+
+      </div>
+
+      <div class="row justify-content-center mt-4">
+
+        <div class="col-lg-9">
+
+          <div class="accordion find-faq"
+               id="findFaq">
+
+            <div class="accordion-item">
+
+              <h3 class="accordion-header">
+
+                <button
+                  class="accordion-button"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#faqOne">
+
+                  What is FindCoching?
+
+                </button>
+
+              </h3>
+
+              <div
+                id="faqOne"
+                class="accordion-collapse collapse show"
+                data-bs-parent="#findFaq">
+
+                <div class="accordion-body">
+                  FindCoching is a hyperlocal coaching marketplace
+                  that helps students discover and connect with
+                  teachers based on subject and location.
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="accordion-item">
+
+              <h3 class="accordion-header">
+
+                <button
+                  class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#faqTwo">
+
+                  How can I find a nearby teacher?
+
+                </button>
+
+              </h3>
+
+              <div
+                id="faqTwo"
+                class="accordion-collapse collapse"
+                data-bs-parent="#findFaq">
+
+                <div class="accordion-body">
+                  Select your subject, allow location access,
+                  and FindCoching can use your location to show
+                  relevant nearby teachers.
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="accordion-item">
+
+              <h3 class="accordion-header">
+
+                <button
+                  class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#faqThree">
+
+                  Can teachers join FindCoching?
+
+                </button>
+
+              </h3>
+
+              <div
+                id="faqThree"
+                class="accordion-collapse collapse"
+                data-bs-parent="#findFaq">
+
+                <div class="accordion-body">
+                  Yes. Teachers can register, complete their profile,
+                  and go through the platform's verification workflow
+                  before becoming available for students.
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="accordion-item">
+
+              <h3 class="accordion-header">
+
+                <button
+                  class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#faqFour">
+
+                  Does FindCoching support online learning?
+
+                </button>
+
+              </h3>
+
+              <div
+                id="faqFour"
+                class="accordion-collapse collapse"
+                data-bs-parent="#findFaq">
+
+                <div class="accordion-body">
+                  Teacher profiles can support different teaching
+                  preferences and modes according to the platform's
+                  available teacher configuration.
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div class="accordion-item">
+
+              <h3 class="accordion-header">
+
+                <button
+                  class="accordion-button collapsed"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#faqFive">
+
+                  Can students communicate with teachers?
+
+                </button>
+
+              </h3>
+
+              <div
+                id="faqFive"
+                class="accordion-collapse collapse"
+                data-bs-parent="#findFaq">
+
+                <div class="accordion-body">
+                  Yes. The platform provides communication features
+                  for eligible student–teacher interactions.
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       FINAL CTA
+  ========================================================== -->
+  <section class="find-final-cta">
+
+    <div class="container">
+
+      <div class="find-final-card">
+
+        <div class="find-hero-orb orb-one"></div>
+
+        <div class="position-relative text-center">
+
+          <span class="find-badge find-badge-light">
+            Start your learning journey
+          </span>
+
+          <h2>
+            The right teacher
+            could be closer than you think.
+          </h2>
+
+          <p>
+            Search by subject, discover teachers nearby,
+            and take the next step toward better learning.
+          </p>
+
+          <a href="#homeSearchForm"
+             class="btn btn-light btn-lg rounded-pill px-5"
+             onclick="document.getElementById('homeSubject').focus();">
+
+            Find a Tutor
+            <i class="bi bi-arrow-right ms-2"></i>
+
+          </a>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
 </div>
-{% endif %}
-{% endblock %}
+
+
+<!-- =========================================================
+     PAGE-SPECIFIC STYLES
+========================================================== -->
+
+<style>
+
+.find-home {
+  --fh-brand: #4f46e5;
+  --fh-brand-dark: #3730a3;
+  --fh-accent: #7c3aed;
+  --fh-ink: #0f172a;
+  --fh-muted: #64748b;
+  --fh-border: #e8eaf0;
+  --fh-soft: #f7f8fc;
+  overflow: hidden;
+}
+
+/* HERO */
+
+.find-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 5.5rem 0 4.5rem;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(124,58,237,.18), transparent 32%),
+    radial-gradient(circle at 85% 10%, rgba(79,70,229,.16), transparent 30%),
+    linear-gradient(180deg, #fafaff 0%, #f5f6ff 100%);
+}
+
+.find-hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+.find-hero .orb-one {
+  width: 360px;
+  height: 360px;
+  right: -180px;
+  top: -180px;
+  background: rgba(124,58,237,.09);
+}
+
+.find-hero .orb-two {
+  width: 280px;
+  height: 280px;
+  left: -150px;
+  bottom: -150px;
+  background: rgba(79,70,229,.08);
+}
+
+.find-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .48rem .8rem;
+  border-radius: 999px;
+  background: rgba(79,70,229,.09);
+  color: var(--fh-brand);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin-bottom: 1.15rem;
+}
+
+.find-badge-light {
+  color: #fff;
+  background: rgba(255,255,255,.14);
+}
+
+.find-hero-title {
+  max-width: 760px;
+  margin: 0;
+  color: var(--fh-ink);
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+  font-weight: 850;
+}
+
+.find-hero-title span {
+  display: block;
+  background: linear-gradient(135deg, var(--fh-brand), var(--fh-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.find-hero-text {
+  max-width: 650px;
+  margin: 1.4rem 0 1.8rem;
+  color: var(--fh-muted);
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+/* SEARCH */
+
+.find-search-card {
+  max-width: 680px;
+  padding: .65rem;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 22px;
+  box-shadow: 0 18px 55px rgba(15,23,42,.12);
+}
+
+.find-search-input {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .2rem .75rem;
+}
+
+.find-search-input i {
+  color: var(--fh-brand);
+  font-size: 1.15rem;
+}
+
+.find-search-input input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: .85rem .25rem;
+  background: transparent;
+  color: var(--fh-ink);
+  font-size: 1rem;
+}
+
+.find-search-input input::placeholder {
+  color: #94a3b8;
+}
+
+.find-location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .7rem .8rem;
+  border-top: 1px solid #eef0f5;
+}
+
+.find-location-status {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  color: #64748b;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.find-location-status i {
+  color: var(--fh-brand);
+}
+
+.find-location-status.is-ready {
+  color: #15803d;
+}
+
+.find-search-button {
+  width: 100%;
+  border-radius: 15px;
+  padding: .85rem 1.2rem;
+  font-weight: 800;
+  border: 0;
+}
+
+.find-trust-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+  margin-top: 1rem;
+  color: #64748b;
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.find-trust-items span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.find-trust-items i {
+  color: var(--fh-brand);
+}
+
+
+/* HERO VISUAL */
+
+.find-hero-visual {
+  position: relative;
+  min-height: 470px;
+}
+
+.visual-main-card {
+  position: absolute;
+  inset: 30px 10px 25px 25px;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 1.15rem;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(255,255,255,.9);
+  box-shadow: 0 25px 70px rgba(15,23,42,.14);
+  transform: rotate(1deg);
+}
+
+.visual-top {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+
+.visual-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: linear-gradient(135deg,var(--fh-brand),var(--fh-accent));
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.visual-top strong {
+  display: block;
+  color: var(--fh-ink);
+}
+
+.visual-check {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.visual-map {
+  position: relative;
+  height: 285px;
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, transparent 48%, rgba(79,70,229,.08) 49%, transparent 51%),
+    linear-gradient(0deg, transparent 48%, rgba(79,70,229,.08) 49%, transparent 51%),
+    #eef2ff;
+  background-size: 55px 55px;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .5;
+  background:
+    linear-gradient(35deg, transparent 47%, rgba(255,255,255,.9) 48%, transparent 52%),
+    linear-gradient(-30deg, transparent 47%, rgba(255,255,255,.9) 48%, transparent 52%);
+}
+
+.map-pin {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--fh-brand);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(79,70,229,.25);
+}
+
+.map-pin i {
+  transform: rotate(45deg);
+}
+
+.pin-one {
+  left: 20%;
+  top: 22%;
+}
+
+.pin-two {
+  right: 22%;
+  top: 35%;
+  background: var(--fh-accent);
+}
+
+.pin-three {
+  left: 47%;
+  bottom: 17%;
+}
+
+.map-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.7);
+  border: 2px solid rgba(79,70,229,.25);
+  color: var(--fh-brand);
+  font-size: 1.2rem;
+}
+
+.visual-search-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-top: 1rem;
+  padding: .75rem .85rem;
+  border-radius: 14px;
+  background: #f8f9fc;
+  color: var(--fh-ink);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.distance-pill {
+  padding: .35rem .55rem;
+  border-radius: 999px;
+  background: var(--fh-brand);
+  color: #fff;
+  font-size: .68rem;
+}
+
+.floating-card {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .8rem .9rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #eef0f5;
+  box-shadow: 0 16px 40px rgba(15,23,42,.13);
+}
+
+.floating-card i {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--fh-brand);
+  color: #fff;
+}
+
+.floating-card strong,
+.floating-card small {
+  display: block;
+}
+
+.floating-card strong {
+  color: var(--fh-ink);
+  font-size: .78rem;
+}
+
+.floating-card small {
+  margin-top: .15rem;
+  color: #94a3b8;
+  font-size: .65rem;
+}
+
+.floating-card-one {
+  top: 8px;
+  left: 0;
+}
+
+.floating-card-two {
+  right: 0;
+  bottom: 5px;
+}
+
+
+/* GENERAL */
+
+.find-section {
+  padding: 5rem 0;
+}
+
+.find-section-heading {
+  margin-bottom: 2rem;
+}
+
+.find-section-heading h2 {
+  margin: .35rem 0 .6rem;
+  color: var(--fh-ink);
+  font-size: clamp(1.8rem, 4vw, 2.65rem);
+  font-weight: 850;
+  letter-spacing: -.035em;
+}
+
+.find-section-heading p {
+  margin: 0;
+  color: var(--fh-muted);
+}
+
+.find-section-label {
+  display: inline-block;
+  color: var(--fh-brand);
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+
+/* BENEFITS */
+
+.find-benefits-section {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.find-benefit-card {
+  height: 100%;
+  display: flex;
+  gap: .9rem;
+  padding: 1.25rem;
+  border: 1px solid var(--fh-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgba(15,23,42,.035);
+}
+
+.find-benefit-icon {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: #eef2ff;
+  color: var(--fh-brand);
+}
+
+.find-benefit-card h3 {
+  margin: .05rem 0 .3rem;
+  color: var(--fh-ink);
+  font-size: .95rem;
+  font-weight: 800;
+}
+
+.find-benefit-card p {
+  margin: 0;
+  color: var(--fh-muted);
+  font-size: .78rem;
+  line-height: 1.55;
+}
+
+
+/* STEPS */
+
+.find-step-card {
+  position: relative;
+  height: 100%;
+  padding: 2rem;
+  border: 1px solid var(--fh-border);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(15,23,42,.04);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.find-step-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 18px 40px rgba(15,23,42,.08);
+}
+
+.find-step-number {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.3rem;
+  color: #e2e8f0;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.find-step-icon {
+  width: 55px;
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg,#eef2ff,#f3e8ff);
+  color: var(--fh-brand);
+  font-size: 1.25rem;
+}
+
+.find-step-card h3 {
+  margin-bottom: .5rem;
+  color: var(--fh-ink);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.find-step-card p {
+  margin: 0;
+  color: var(--fh-muted);
+  line-height: 1.7;
+  font-size: .88rem;
+}
+
+
+/* AUDIENCE */
+
+.find-audience-section {
+  background: #f8f9fd;
+}
+
+.find-audience-title {
+  max-width: 550px;
+  margin: .45rem 0 1rem;
+  color: var(--fh-ink);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 850;
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.find-audience-title span {
+  color: var(--fh-brand);
+}
+
+.find-audience-text {
+  max-width: 570px;
+  color: var(--fh-muted);
+  line-height: 1.8;
+}
+
+.find-check-list {
+  display: grid;
+  gap: .7rem;
+  margin-top: 1.4rem;
+}
+
+.find-check-list div {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  color: var(--fh-ink);
+  font-size: .88rem;
+  font-weight: 650;
+}
+
+.find-check-list i {
+  color: #16a34a;
+}
+
+
+/* PREVIEW */
+
+.find-dashboard-preview {
+  padding: 1.2rem;
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid var(--fh-border);
+  box-shadow: 0 20px 55px rgba(15,23,42,.08);
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-header span,
+.preview-header strong {
+  display: block;
+}
+
+.preview-header span {
+  color: #94a3b8;
+  font-size: .7rem;
+}
+
+.preview-header strong {
+  margin-top: .2rem;
+  color: var(--fh-ink);
+  font-size: .9rem;
+}
+
+.preview-avatar {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: #eef2ff;
+  color: var(--fh-brand);
+}
+
+.preview-search {
+  margin: 1rem 0;
+  padding: .8rem;
+  border-radius: 13px;
+  background: #f8f9fc;
+  color: #94a3b8;
+  font-size: .78rem;
+}
+
+.preview-teacher {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .9rem;
+  border: 1px solid #eef0f5;
+  border-radius: 15px;
+}
+
+.preview-teacher-avatar {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg,var(--fh-brand),var(--fh-accent));
+  color: #fff;
+}
+
+.preview-teacher strong,
+.preview-teacher small {
+  display: block;
+}
+
+.preview-teacher strong {
+  color: var(--fh-ink);
+  font-size: .8rem;
+}
+
+.preview-teacher small {
+  margin-top: .15rem;
+  color: #94a3b8;
+  font-size: .68rem;
+}
+
+.preview-status {
+  padding: .3rem .5rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: .62rem;
+  font-weight: 800;
+}
+
+.preview-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .6rem;
+  margin-top: .8rem;
+}
+
+.preview-stats div {
+  padding: .8rem .4rem;
+  text-align: center;
+  border-radius: 13px;
+  background: #f8f9fc;
+}
+
+.preview-stats strong,
+.preview-stats small {
+  display: block;
+}
+
+.preview-stats strong {
+  color: var(--fh-brand);
+}
+
+.preview-stats small {
+  margin-top: .25rem;
+  color: #64748b;
+  font-size: .62rem;
+}
+
+
+/* TEACHER */
+
+.find-teacher-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 2.7rem;
+  border-radius: 28px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 90% 0%,rgba(255,255,255,.18),transparent 30%),
+    linear-gradient(135deg,#312e81,#6d28d9);
+  box-shadow: 0 20px 50px rgba(79,70,229,.18);
+}
+
+.find-teacher-banner h2 {
+  max-width: 700px;
+  margin: .5rem 0 .8rem;
+  color: #fff;
+  font-size: clamp(1.9rem,4vw,3rem);
+  font-weight: 850;
+  letter-spacing: -.04em;
+}
+
+.find-teacher-banner p {
+  max-width: 680px;
+  margin: 0;
+  color: rgba(255,255,255,.78);
+  line-height: 1.7;
+}
+
+.find-teacher-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem 1rem;
+  margin-top: 1.4rem;
+}
+
+.find-teacher-features span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: rgba(255,255,255,.9);
+  font-size: .75rem;
+  font-weight: 650;
+}
+
+
+/* SUBJECTS */
+
+.find-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .8rem;
+}
+
+.find-subject-card {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-width: 0;
+  padding: .9rem;
+  border: 1px solid var(--fh-border);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--fh-ink);
+  text-align: left;
+  transition: all .18s ease;
+}
+
+.find-subject-card:hover {
+  border-color: rgba(79,70,229,.35);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(15,23,42,.07);
+}
+
+.find-subject-icon {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: var(--fh-brand);
+}
+
+.find-subject-name {
+  font-size: .82rem;
+  font-weight: 750;
+}
+
+.find-subject-arrow {
+  margin-left: auto;
+  color: #94a3b8;
+}
+
+
+/* TRUST */
+
+.find-trust-section {
+  background: #f8f9fd;
+}
+
+.find-trust-card {
+  height: 100%;
+  padding: 1.25rem;
+  text-align: center;
+  border: 1px solid var(--fh-border);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.find-trust-card i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto .8rem;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: var(--fh-brand);
+  font-size: 1.15rem;
+}
+
+.find-trust-card strong,
+.find-trust-card span {
+  display: block;
+}
+
+.find-trust-card strong {
+  color: var(--fh-ink);
+  font-size: .82rem;
+}
+
+.find-trust-card span {
+  margin-top: .3rem;
+  color: #94a3b8;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+
+/* FAQ */
+
+.find-faq {
+  overflow: hidden;
+  border: 1px solid var(--fh-border);
+  border-radius: 20px;
+}
+
+.find-faq .accordion-item {
+  border-color: var(--fh-border);
+}
+
+.find-faq .accordion-button {
+  padding: 1.15rem 1.25rem;
+  color: var(--fh-ink);
+  background: #fff;
+  font-size: .9rem;
+  font-weight: 750;
+  box-shadow: none;
+}
+
+.find-faq .accordion-button:not(.collapsed) {
+  color: var(--fh-brand);
+  background: #fafaff;
+}
+
+.find-faq .accordion-body {
+  color: var(--fh-muted);
+  line-height: 1.7;
+  font-size: .84rem;
+}
+
+
+/* FINAL CTA */
+
+.find-final-cta {
+  padding: 0 0 5rem;
+}
+
+.find-final-card {
+  position: relative;
+  overflow: hidden;
+  padding: 4rem 1.5rem;
+  border-radius: 30px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 10% 0%,rgba(255,255,255,.15),transparent 30%),
+    radial-gradient(circle at 90% 100%,rgba(255,255,255,.1),transparent 35%),
+    linear-gradient(135deg,#4338ca,#7c3aed);
+}
+
+.find-final-card h2 {
+  max-width: 760px;
+  margin: .6rem auto .8rem;
+  color: #fff;
+  font-size: clamp(2rem,5vw,3.5rem);
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: -.045em;
+}
+
+.find-final-card p {
+  max-width: 620px;
+  margin: 0 auto 1.5rem;
+  color: rgba(255,255,255,.78);
+  line-height: 1.7;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 767.98px) {
+
+  .find-hero {
+    padding: 3.5rem 0 3rem;
+  }
+
+  .find-hero-title {
+    font-size: clamp(2.45rem, 12vw, 3.6rem);
+  }
+
+  .find-hero-text {
+    font-size: .95rem;
+    line-height: 1.65;
+  }
+
+  .find-search-card {
+    border-radius: 18px;
+  }
+
+  .find-location-row {
+    align-items: flex-start;
+  }
+
+  .find-location-status {
+    line-height: 1.35;
+  }
+
+  .find-trust-items {
+    gap: .65rem .9rem;
+  }
+
+  .find-trust-items span {
+    font-size: .68rem;
+  }
+
+  .find-section {
+    padding: 3.5rem 0;
+  }
+
+  .find-section-heading h2 {
+    font-size: 1.9rem;
+  }
+
+  .find-subject-grid {
+    grid-template-columns: repeat(2,1fr);
+  }
+
+  .find-subject-card {
+    padding: .75rem;
+  }
+
+  .find-subject-icon {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .find-subject-name {
+    font-size: .75rem;
+  }
+
+  .find-teacher-banner {
+    padding: 2rem 1.3rem;
+    border-radius: 22px;
+  }
+
+  .find-final-card {
+    padding: 3rem 1.1rem;
+    border-radius: 24px;
+  }
+
+}
+
+@media (max-width: 420px) {
+
+  .find-subject-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .find-location-row {
+    flex-direction: column;
+  }
+
+  .find-location-row button {
+    width: 100%;
+  }
+
+  .find-benefit-card {
+    padding: 1rem;
+  }
+
+}
+
+
+/* DARK MODE */
+
+[data-bs-theme="dark"] .find-home {
+  --fh-ink: #f8fafc;
+  --fh-muted: #94a3b8;
+  --fh-border: #292d3a;
+  --fh-soft: #11141c;
+}
+
+[data-bs-theme="dark"] .find-hero,
+[data-bs-theme="dark"] .find-audience-section,
+[data-bs-theme="dark"] .find-trust-section {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(124,58,237,.12), transparent 32%),
+    #0f1117;
+}
+
+[data-bs-theme="dark"] .find-search-card,
+[data-bs-theme="dark"] .find-benefit-card,
+[data-bs-theme="dark"] .find-step-card,
+[data-bs-theme="dark"] .find-dashboard-preview,
+[data-bs-theme="dark"] .find-subject-card,
+[data-bs-theme="dark"] .find-trust-card,
+[data-bs-theme="dark"] .find-faq .accordion-button,
+[data-bs-theme="dark"] .visual-main-card,
+[data-bs-theme="dark"] .floating-card {
+  background: #171a23;
+  border-color: #292d3a;
+}
+
+[data-bs-theme="dark"] .find-search-input input,
+[data-bs-theme="dark"] .find-subject-card,
+[data-bs-theme="dark"] .find-faq .accordion-button {
+  color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .find-location-row,
+[data-bs-theme="dark"] .visual-search-row,
+[data-bs-theme="dark"] .preview-search,
+[data-bs-theme="dark"] .preview-stats div {
+  border-color: #292d3a;
+  background: #11141c;
+}
+
+[data-bs-theme="dark"] .visual-map {
+  background-color: #1d2140;
+}
+
+[data-bs-theme="dark"] .find-faq,
+[data-bs-theme="dark"] .find-faq .accordion-item {
+  border-color: #292d3a;
+}
+
+[data-bs-theme="dark"] .find-benefit-card h3,
+[data-bs-theme="dark"] .find-step-card h3,
+[data-bs-theme="dark"] .preview-header strong,
+[data-bs-theme="dark"] .preview-teacher strong,
+[data-bs-theme="dark"] .find-trust-card strong {
+  color: #f8fafc;
+}
+
+</style>
+
+
+<!-- =========================================================
+     HOME PAGE JAVASCRIPT
+========================================================== -->
 
 {% block extra_scripts %}
 {% if not current_user.is_authenticated %}
+
 <script>
 (function () {
+
   const form = document.getElementById('homeSearchForm');
   const lat = document.getElementById('homeLat');
   const lng = document.getElementById('homeLng');
@@ -92,59 +2123,227 @@
   const detect = document.getElementById('detectLocationBtn');
   const subject = document.getElementById('homeSubject');
 
+  if (!form || !lat || !lng) return;
+
+
   function setStatus(text, ok) {
-    status.innerHTML = '<i class="bi bi-' + (ok ? 'geo-alt-fill' : 'geo-alt') + '"></i><span>' + text + '</span>';
-    status.classList.toggle('is-ready', !!ok);
+
+    status.innerHTML =
+      '<i class="bi bi-' +
+      (ok ? 'geo-alt-fill' : 'geo-alt') +
+      '"></i>' +
+      '<span>' +
+      text +
+      '</span>';
+
+    status.classList.toggle(
+      'is-ready',
+      !!ok
+    );
   }
+
+
+  function showHelp(text) {
+
+    help.textContent = text;
+    help.classList.remove('d-none');
+
+  }
+
+
+  function hideHelp() {
+
+    help.classList.add('d-none');
+
+  }
+
 
   function locate() {
+
     if (!navigator.geolocation) {
-      setStatus('Location is not supported by this browser', false);
-      help.textContent = 'You can still search after enabling location support in your browser.';
-      help.classList.remove('d-none');
+
+      setStatus(
+        'Location is not supported by this browser',
+        false
+      );
+
+      showHelp(
+        'Your browser does not support location-based search.'
+      );
+
       return;
     }
-    setStatus('Detecting your location…', false);
+
+
+    setStatus(
+      'Detecting your location…',
+      false
+    );
+
     detect.disabled = true;
-    detect.textContent = 'Detecting…';
-    navigator.geolocation.getCurrentPosition(function (position) {
-      lat.value = position.coords.latitude.toFixed(7);
-      lng.value = position.coords.longitude.toFixed(7);
-      setStatus('Location detected — ready to search nearby', true);
-      help.classList.add('d-none');
-      detect.textContent = 'Refresh';
-      detect.disabled = false;
-    }, function (error) {
-      const msg = error.code === 1 ? 'Location permission was denied' : 'Could not detect your location';
-      setStatus(msg, false);
-      help.textContent = 'Tap Allow location or check your browser location permission. Your exact location is only used for nearby search.';
-      help.classList.remove('d-none');
-      detect.textContent = 'Try again';
-      detect.disabled = false;
-    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+    detect.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-1"></span> Detecting…';
+
+
+    navigator.geolocation.getCurrentPosition(
+
+      function (position) {
+
+        lat.value =
+          position.coords.latitude.toFixed(7);
+
+        lng.value =
+          position.coords.longitude.toFixed(7);
+
+
+        setStatus(
+          'Location detected — ready to search nearby',
+          true
+        );
+
+        hideHelp();
+
+        detect.disabled = false;
+
+        detect.innerHTML =
+          '<i class="bi bi-arrow-repeat me-1"></i> Refresh';
+
+      },
+
+
+      function (error) {
+
+        let message =
+          'Could not detect your location';
+
+        if (error.code === 1) {
+          message =
+            'Location permission was denied';
+        }
+
+        setStatus(
+          message,
+          false
+        );
+
+        showHelp(
+          'Tap “Allow location” and check your browser location permission. Your location is used only for nearby teacher search.'
+        );
+
+        detect.disabled = false;
+
+        detect.innerHTML =
+          '<i class="bi bi-crosshair me-1"></i> Try again';
+
+      },
+
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+
+    );
+
   }
 
-  detect.addEventListener('click', locate);
-  // If permission was already granted, this is automatic. If not, the browser shows its normal permission prompt.
+
+  detect.addEventListener(
+    'click',
+    locate
+  );
+
+
+  /*
+   * Popular subject cards
+   */
+  document
+    .querySelectorAll('.find-subject-card')
+    .forEach(function (button) {
+
+      button.addEventListener(
+        'click',
+        function () {
+
+          subject.value =
+            button.dataset.subject;
+
+          subject.focus();
+
+          window.scrollTo({
+            top: document
+              .querySelector('.find-hero')
+              .offsetTop,
+            behavior: 'smooth'
+          });
+
+        }
+      );
+
+    });
+
+
+  /*
+   * Search validation
+   */
+  form.addEventListener(
+    'submit',
+    function (event) {
+
+      if (!subject.value.trim()) {
+
+        event.preventDefault();
+
+        subject.focus();
+
+        subject.setCustomValidity(
+          'Please enter a subject.'
+        );
+
+        subject.reportValidity();
+
+        setTimeout(function () {
+          subject.setCustomValidity('');
+        }, 1500);
+
+        return;
+      }
+
+
+      if (!lat.value || !lng.value) {
+
+        event.preventDefault();
+
+        setStatus(
+          'Please allow location to find nearby teachers',
+          false
+        );
+
+        showHelp(
+          'Tap “Allow location” and try again.'
+        );
+
+        detect.focus();
+
+      }
+
+    }
+  );
+
+
+  /*
+   * Attempt automatic location detection.
+   * If browser permission is not available,
+   * the user can manually press Allow location.
+   */
   locate();
 
-  document.querySelectorAll('.subject-pill').forEach(function (button) {
-    button.addEventListener('click', function () {
-      subject.value = button.dataset.subject;
-      subject.focus();
-    });
-  });
-
-  form.addEventListener('submit', function (e) {
-    if (!lat.value || !lng.value) {
-      e.preventDefault();
-      setStatus('Please allow location to find nearby teachers', false);
-      help.textContent = 'Tap “Allow location” and try again.';
-      help.classList.remove('d-none');
-      detect.focus();
-    }
-  });
 })();
 </script>
+
 {% endif %}
+{% endblock %}
+
+{% endif %}
+
 {% endblock %}

@@ -149,10 +149,15 @@ def hire_teacher(teacher_id):
         return redirect(url_for("student.teacher_search"))
 
     form = HireRequestForm()
+
+    if not form.validate_on_submit():
+        flash("Invalid hire request.", "danger")
+        return redirect(url_for("student.teacher_search"))
+
     hire = HireRequest(
         student_id=profile.id,
         teacher_id=teacher.id,
-        message=form.message.data if form.message.data else request.form.get("message", "").strip(),
+        message=(form.message.data or "").strip(),
         status=HireStatus.PENDING,
     )
     db.session.add(hire)
@@ -244,7 +249,12 @@ def payments():
             return redirect(url_for("student.payments"))
 
         teacher = TeacherProfile.query.get(form.teacher_id.data)
-        if not teacher or teacher.id not in [t.id for t in hired_teachers]:
+        if (
+            not teacher
+            or teacher.id not in [t.id for t in hired_teachers]
+            or teacher.status != TeacherStatus.APPROVED
+            or not teacher.is_available
+        ):
             flash("Invalid teacher selection.", "danger")
             return redirect(url_for("student.payments"))
 
@@ -268,7 +278,7 @@ def payments():
             commission_percent=commission_percent,
             commission_amount=commission_amount,
             net_to_teacher=net_to_teacher,
-            transaction_id=form.transaction_id.data.strip(),
+            transaction_id=(form.transaction_id.data or "").strip()[:120],
             screenshot_path=screenshot_path,
             billing_period=form.billing_period.data,
             status=initial_status,

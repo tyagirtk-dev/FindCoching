@@ -22,7 +22,18 @@ class StudentProfile(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = db.relationship("User", back_populates="student_profile", foreign_keys=[user_id])
+    user = db.relationship(
+        "User",
+        back_populates="student_profile",
+        foreign_keys=[user_id],
+    )
+
+    availability_slots = db.relationship(
+        "StudentAvailabilitySlot",
+        back_populates="student",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
     __table_args__ = (
         db.Index("ix_student_lat_lng", "latitude", "longitude"),
