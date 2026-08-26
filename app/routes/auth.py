@@ -5,6 +5,8 @@ import string
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import safe_str_cmp
+from urllib.parse import urlparse
 
 from app import db, limiter
 from app.forms.auth_forms import (
@@ -81,6 +83,41 @@ def save_teacher_slots(profile, availability_json):
 
 
 
+
+
+def _is_safe_redirect_url(target):
+    """
+    Ensure redirect target is to a local route, not an external site.
+    Protects against CWE-601 (Open Redirect).
+    """
+    if not target:
+        return False
+
+    # Parse the URL
+    parsed = urlparse(target)
+
+    # Only allow relative URLs (no scheme/netloc) or same-host URLs
+    if parsed.scheme and parsed.scheme not in ('http', 'https'):
+        return False
+    if parsed.netloc and parsed.netloc != request.host:
+        return False
+
+    # Whitelist of safe redirect destinations
+    safe_paths = [
+        url_for('student.dashboard'),
+        url_for('teacher.dashboard'),
+        url_for('admin.dashboard'),
+        url_for('main.index'),
+        url_for('student.teacher_search'),
+    ]
+
+    # Check if target matches any safe path (handle partial matches)
+    target_path = parsed.path + ('?' + parsed.query if parsed.query else '')
+    for safe_path in safe_paths:
+        if target_path.startswith(safe_path):
+            return True
+
+    return False
 
 
 @auth_bp.route("/register/student", methods=["GET", "POST"])
@@ -319,12 +356,12 @@ def login():
         AuditLog.log(user.id, "login_success", ip_address=request.remote_addr)
         db.session.commit()
 
-        # Never redirect to an arbitrary external URL supplied by the client.
-        # Only allow local relative paths.
+        # CRITICAL-FIX: Validate 'next' URL to prevent open redirect (CWE-601)
         next_url = request.args.get("next", "").strip()
-
-        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+        if next_url and _is_safe_redirect_url(next_url):
             return redirect(next_url)
+
+        # Default redirects based on role
         if user.role == RoleEnum.SUPER_ADMIN:
             return redirect(url_for("admin.dashboard"))
         if user.role == RoleEnum.TEACHER:
