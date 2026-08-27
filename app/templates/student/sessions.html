@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}My Classes — {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="session-page">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <div class="home-kicker">Learning schedule</div>
+      <h1 class="page-title mb-0">My Classes</h1>
+    </div>
+    <a href="{{ url_for('student.teacher_search') }}"
+       class="btn btn-primary btn-sm rounded-pill">
+      <i class="bi bi-plus-lg me-1"></i> Book Class
+    </a>
+  </div>
+
+  {% if sessions %}
+  <div class="row g-3">
+    {% for session in sessions %}
+    <div class="col-12 col-md-6">
+
+      <article class="card session-card border-0 shadow-sm rounded-4 p-3 h-100">
+
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <div class="small text-muted">
+              {{ session.scheduled_start.strftime("%d %b %Y · %I:%M %p") }}
+            </div>
+
+            <h2 class="h6 fw-bold mt-1 mb-1">
+              {{ session.teacher.user.name }}
+            </h2>
+          </div>
+
+          <span class="session-status status-{{ session.status.value }}">
+            {{ session.status.value.replace("_", " ")|title }}
+          </span>
+        </div>
+
+        <div class="small text-muted mt-2">
+          <i class="bi bi-clock me-1"></i>
+          {{ ((session.scheduled_end - session.scheduled_start).total_seconds() / 60)|int }} minutes
+          · {{ session.teaching_mode.value|title }}
+        </div>
+
+        {% if session.status.value in ["travelling", "arrived", "in_progress"] %}
+        <div class="alert alert-primary mt-3 mb-2 py-2 small">
+          <i class="bi bi-broadcast-pin me-1"></i>
+          Live session is active
+        </div>
+        {% endif %}
+
+        <a href="{{ url_for('student.student_session_detail', session_id=session.id) }}"
+           class="btn btn-outline-primary btn-sm rounded-pill w-100 mt-3">
+          <i class="bi bi-eye me-1"></i>
+          View Class
+        </a>
+
+      </article>
+
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
+    <div class="empty-state-icon mx-auto">
+      <i class="bi bi-calendar-x"></i>
+    </div>
+    <h2 class="h6 fw-bold">No classes scheduled</h2>
+    <p class="small text-muted">
+      Find a teacher and book your first class.
+    </p>
+    <a href="{{ url_for('student.teacher_search') }}"
+       class="btn btn-primary rounded-pill px-4">
+      Find Teachers
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

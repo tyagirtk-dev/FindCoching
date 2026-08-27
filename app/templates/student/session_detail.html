@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Live Class #{{ session.id }} — {{ site_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="session-page">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <div class="home-kicker">Live class</div>
+      <h1 class="page-title mb-0">
+        {{ session.teacher.user.name }}
+      </h1>
+    </div>
+
+    <a href="{{ url_for('student.student_sessions') }}"
+       class="btn btn-light border rounded-pill btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Classes
+    </a>
+  </div>
+
+  <div id="liveAlert" class="alert alert-primary shadow-sm">
+    Loading live session…
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+
+    <div class="row g-3 text-center">
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Status</div>
+        <div id="sessionStatus" class="fw-bold mt-1">
+          {{ session.status.value|replace("_", " ")|title }}
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Class Timer</div>
+        <div id="sessionTimer" class="fw-bold fs-5 mt-1">
+          --
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Travel</div>
+        <div id="travelStatus" class="fw-bold mt-1">
+          {{ session.travel_mode.value|title }}
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Last Location</div>
+        <div id="locationUpdated" class="fw-bold mt-1">
+          --
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="mapCard"
+       class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
+
+    <div class="p-3 border-bottom">
+      <div class="fw-bold">
+        <i class="bi bi-geo-alt-fill me-1"></i>
+        Teacher Location
+      </div>
+      <div id="locationText" class="small text-muted">
+        Waiting for teacher location…
+      </div>
+    </div>
+
+    <div id="teacherMap" style="height:360px"></div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+(function () {
+
+  const sessionId = {{ session.id|tojson }};
+
+  const statusEl = document.getElementById('sessionStatus');
+  const timerEl = document.getElementById('sessionTimer');
+  const travelEl = document.getElementById('travelStatus');
+  const locationUpdatedEl = document.getElementById('locationUpdated');
+  const locationTextEl = document.getElementById('locationText');
+  const alertEl = document.getElementById('liveAlert');
+
+  let map = null;
+  let marker = null;
+
+  function formatTimer(seconds) {
+    seconds = Math.max(0, Number(seconds || 0));
+
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+
+    return [
+      h > 0 ? String(h).padStart(2, '0') : null,
+      String(m).padStart(2, '0'),
+      String(s).padStart(2, '0')
+    ].filter(Boolean).join(':');
+  }
+
+  function initMap(lat, lng) {
+
+    if (!map) {
+      map = L.map('teacherMap').setView([lat, lng], 15);
+
+      L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        }
+      ).addTo(map);
+    }
+
+    if (!marker) {
+      marker = L.marker([lat, lng]).addTo(map);
+      marker.bindPopup('Teacher live location');
+    } else {
+      marker.setLatLng([lat, lng]);
+    }
+
+    map.setView([lat, lng]);
+  }
+
+  async function refresh() {
+
+    try {
+
+      const response = await fetch(
+        `/student/sessions/${sessionId}/status`,
+        {
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to load session');
+      }
+
+      const session = data.session;
+
+      statusEl.textContent =
+        String(session.status || '').replaceAll('_', ' ');
+
+      travelEl.textContent =
+        String(session.travel_mode || '').replaceAll('_', ' ');
+
+      timerEl.textContent =
+        formatTimer(session.remaining_seconds);
+
+      if (session.status === 'travelling') {
+        alertEl.className = 'alert alert-primary shadow-sm';
+        alertEl.innerHTML =
+          '<i class="bi bi-broadcast-pin me-1"></i>' +
+          'Teacher is travelling to your class.';
+      }
+      else if (session.status === 'arrived') {
+        alertEl.className = 'alert alert-success shadow-sm';
+        alertEl.innerHTML =
+          '<i class="bi bi-check-circle me-1"></i>' +
+          'Teacher has arrived.';
+      }
+      else if (session.status === 'in_progress') {
+        alertEl.className = 'alert alert-success shadow-sm';
+        alertEl.innerHTML =
+          '<i class="bi bi-play-circle me-1"></i>' +
+          'Class is in progress.';
+      }
+      else if (session.status === 'completed') {
+        alertEl.className = 'alert alert-secondary shadow-sm';
+        alertEl.innerHTML =
+          '<i class="bi bi-check2-all me-1"></i>' +
+          'Class completed.';
+      }
+      else {
+        alertEl.className = 'alert alert-light border shadow-sm';
+        alertEl.textContent =
+          'Class status: ' +
+          String(session.status || '').replaceAll('_', ' ');
+      }
+
+      if (
+        session.current_teacher_latitude !== null &&
+        session.current_teacher_longitude !== null
+      ) {
+
+        const lat = Number(session.current_teacher_latitude);
+        const lng = Number(session.current_teacher_longitude);
+
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+
+          initMap(lat, lng);
+
+          locationTextEl.textContent =
+            `Live location: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+        }
+      }
+
+      if (session.location_updated_at) {
+
+        const d = new Date(session.location_updated_at);
+
+        if (!Number.isNaN(d.getTime())) {
+          locationUpdatedEl.textContent =
+            d.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+        }
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      alertEl.className = 'alert alert-warning shadow-sm';
+      alertEl.textContent =
+        error.message || 'Unable to refresh live session.';
+    }
+
+  }
+
+  refresh();
+
+  setInterval(refresh, 5000);
+
+})();
+</script>
+{% endblock %}

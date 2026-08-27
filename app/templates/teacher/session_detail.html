@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+
+{% block title %}Class #{{ session.id }} — {{ site_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+
+<div class="session-page">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <div class="home-kicker">Class control</div>
+      <h1 class="page-title mb-0">
+        {{ session.student.user.name }}
+      </h1>
+    </div>
+
+    <a href="{{ url_for('teacher.teacher_sessions') }}"
+       class="btn btn-light border rounded-pill btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Classes
+    </a>
+  </div>
+
+  <div id="controlAlert" class="alert alert-light border shadow-sm">
+    Ready.
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+
+    <div class="row g-3 text-center">
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Status</div>
+        <div id="sessionStatus" class="fw-bold mt-1">
+          {{ session.status.value|replace("_", " ")|title }}
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Class Timer</div>
+        <div id="sessionTimer" class="fw-bold fs-4">
+          --
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Teaching Mode</div>
+        <div id="teachingMode" class="fw-bold mt-1">
+          {{ session.teaching_mode.value|title }}
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="small text-muted">Location</div>
+        <div id="locationState" class="fw-bold mt-1">
+          Off
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+
+    <div class="d-grid gap-2">
+
+      <button id="startTravelBtn"
+              class="btn btn-primary rounded-pill">
+        <i class="bi bi-sign-turn-right me-1"></i>
+        Start Travel
+      </button>
+
+      <button id="arrivedBtn"
+              class="btn btn-success rounded-pill"
+              disabled>
+        <i class="bi bi-geo-alt-fill me-1"></i>
+        Mark Arrived
+      </button>
+
+      <button id="startClassBtn"
+              class="btn btn-dark rounded-pill"
+              disabled>
+        <i class="bi bi-play-fill me-1"></i>
+        Start Class
+      </button>
+
+      <button id="completeBtn"
+              class="btn btn-outline-danger rounded-pill"
+              disabled>
+        <i class="bi bi-check2-circle me-1"></i>
+        Complete Class
+      </button>
+
+    </div>
+
+  </div>
+
+  <div id="mapCard"
+       class="card border-0 shadow-sm rounded-4 overflow-hidden">
+
+    <div class="p-3 border-bottom">
+      <div class="fw-bold">
+        <i class="bi bi-broadcast-pin me-1"></i>
+        Your Live Location
+      </div>
+
+      <div id="gpsText" class="small text-muted">
+        GPS is not active.
+      </div>
+    </div>
+
+    <div id="teacherMap" style="height:360px"></div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+(function () {
+
+  const sessionId = {{ session.id|tojson }};
+
+  const csrfMeta = document.querySelector(
+    'meta[name="csrf-token"]'
+  );
+
+  const csrfToken = csrfMeta ? csrfMeta.content : '';
+
+  const alertEl = document.getElementById('controlAlert');
+  const statusEl = document.getElementById('sessionStatus');
+  const timerEl = document.getElementById('sessionTimer');
+  const teachingModeEl = document.getElementById('teachingMode');
+  const locationStateEl = document.getElementById('locationState');
+  const gpsTextEl = document.getElementById('gpsText');
+
+  const startTravelBtn =
+    document.getElementById('startTravelBtn');
+
+  const arrivedBtn =
+    document.getElementById('arrivedBtn');
+
+  const startClassBtn =
+    document.getElementById('startClassBtn');
+
+  const completeBtn =
+    document.getElementById('completeBtn');
+
+  let watchId = null;
+  let map = null;
+  let marker = null;
+
+  function show(message, type = 'light') {
+
+    alertEl.className =
+      `alert alert-${type} shadow-sm`;
+
+    alertEl.textContent = message;
+  }
+
+  function headers() {
+
+    const result = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    if (csrfToken) {
+      result['X-CSRFToken'] = csrfToken;
+    }
+
+    return result;
+  }
+
+  async function post(url, body = {}) {
+
+    const response = await fetch(
+      url,
+      {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: headers(),
+        body: JSON.stringify(body)
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        data.message ||
+        `Request failed (${response.status})`
+      );
+    }
+
+    return data;
+  }
+
+  function formatTimer(seconds) {
+
+    seconds = Math.max(0, Number(seconds || 0));
+
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+
+    return [
+      h > 0 ? String(h).padStart(2, '0') : null,
+      String(m).padStart(2, '0'),
+      String(s).padStart(2, '0')
+    ].filter(Boolean).join(':');
+  }
+
+  function initMap(lat, lng) {
+
+    if (!map) {
+
+      map = L.map('teacherMap').setView(
+        [lat, lng],
+        16
+      );
+
+      L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        }
+      ).addTo(map);
+    }
+
+    if (!marker) {
+
+      marker = L.marker([lat, lng])
+        .addTo(map);
+
+      marker.bindPopup('Your live location');
+
+    } else {
+
+      marker.setLatLng([lat, lng]);
+
+    }
+
+    map.setView([lat, lng]);
+  }
+
+  function startGPS() {
+
+    if (!navigator.geolocation) {
+      show('This device does not support GPS.', 'danger');
+      return;
+    }
+
+    if (watchId !== null) {
+      return;
+    }
+
+    locationStateEl.textContent = 'Active';
+
+    watchId = navigator.geolocation.watchPosition(
+      async function (position) {
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        initMap(lat, lng);
+
+        gpsTextEl.textContent =
+          `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+        try {
+
+          await post(
+            `/teacher/sessions/${sessionId}/location`,
+            {
+              latitude: lat,
+              longitude: lng
+            }
+          );
+
+        } catch (error) {
+
+          console.error(
+            'Location update failed:',
+            error
+          );
+
+        }
+
+      },
+      function (error) {
+
+        console.error(error);
+
+        locationStateEl.textContent =
+          'Permission required';
+
+        show(
+          'Location permission is required for live travel tracking.',
+          'warning'
+        );
+
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000
+      }
+    );
+  }
+
+  async function refresh() {
+
+    try {
+
+      const response = await fetch(
+        `/teacher/sessions/${sessionId}/status`,
+        {
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || 'Unable to refresh session'
+        );
+      }
+
+      const session = data.session;
+
+      statusEl.textContent =
+        String(session.status || '')
+          .replaceAll('_', ' ');
+
+      teachingModeEl.textContent =
+        String(session.teaching_mode || '')
+          .replaceAll('_', ' ');
+
+      timerEl.textContent =
+        formatTimer(session.remaining_seconds);
+
+      startTravelBtn.disabled =
+        session.status !== 'scheduled';
+
+      arrivedBtn.disabled =
+        session.status !== 'travelling';
+
+      startClassBtn.disabled =
+        session.status !== 'arrived';
+
+      completeBtn.disabled =
+        session.status !== 'in_progress';
+
+      if (session.status === 'travelling') {
+        show(
+          'Travel is active. Keep this page open for GPS updates.',
+          'primary'
+        );
+      }
+
+      if (session.status === 'arrived') {
+        show(
+          'You have arrived. You can start the class.',
+          'success'
+        );
+      }
+
+      if (session.status === 'in_progress') {
+        show(
+          'Class is in progress. Timer is server-authoritative.',
+          'success'
+        );
+      }
+
+      if (session.status === 'completed') {
+        show(
+          'Class completed.',
+          'secondary'
+        );
+
+        startTravelBtn.disabled = true;
+        arrivedBtn.disabled = true;
+        startClassBtn.disabled = true;
+        completeBtn.disabled = true;
+
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      show(
+        error.message ||
+        'Unable to refresh session.',
+        'warning'
+      );
+    }
+
+  }
+
+
+  startTravelBtn.addEventListener(
+    'click',
+    async function () {
+
+      startTravelBtn.disabled = true;
+
+      try {
+
+        await post(
+          `/teacher/sessions/${sessionId}/start-travel`
+        );
+
+        startGPS();
+
+        show(
+          'Travel started. Live GPS tracking is active.',
+          'primary'
+        );
+
+        await refresh();
+
+      } catch (error) {
+
+        startTravelBtn.disabled = false;
+
+        show(
+          error.message || 'Unable to start travel.',
+          'danger'
+        );
+      }
+
+    }
+  );
+
+
+  arrivedBtn.addEventListener(
+    'click',
+    async function () {
+
+      arrivedBtn.disabled = true;
+
+      try {
+
+        await post(
+          `/teacher/sessions/${sessionId}/arrived`
+        );
+
+        show(
+          'Arrival recorded.',
+          'success'
+        );
+
+        await refresh();
+
+      } catch (error) {
+
+        arrivedBtn.disabled = false;
+
+        show(
+          error.message || 'Unable to mark arrival.',
+          'danger'
+        );
+      }
+
+    }
+  );
+
+
+  startClassBtn.addEventListener(
+    'click',
+    async function () {
+
+      startClassBtn.disabled = true;
+
+      try {
+
+        await post(
+          `/teacher/sessions/${sessionId}/start`
+        );
+
+        show(
+          'Class started. Server timer is running.',
+          'success'
+        );
+
+        await refresh();
+
+      } catch (error) {
+
+        startClassBtn.disabled = false;
+
+        show(
+          error.message || 'Unable to start class.',
+          'danger'
+        );
+      }
+
+    }
+  );
+
+
+  completeBtn.addEventListener(
+    'click',
+    async function () {
+
+      if (
+        !window.confirm(
+          'Are you sure you want to complete this class?'
+        )
+      ) {
+        return;
+      }
+
+      completeBtn.disabled = true;
+
+      try {
+
+        await post(
+          `/teacher/sessions/${sessionId}/complete`
+        );
+
+        show(
+          'Class completed successfully.',
+          'success'
+        );
+
+        await refresh();
+
+      } catch (error) {
+
+        completeBtn.disabled = false;
+
+        show(
+          error.message || 'Unable to complete class.',
+          'danger'
+        );
+      }
+
+    }
+  );
+
+
+  refresh();
+
+  setInterval(refresh, 5000);
+
+})();
+</script>
+
+{% endblock %}
