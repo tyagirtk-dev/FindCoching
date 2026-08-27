@@ -35,9 +35,11 @@
     <div class="container-fluid px-3 px-lg-4">
       <nav class="navbar navbar-expand-lg p-0 py-2">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
-          <span class="brand-mark bg-primary text-white rounded-3 p-2 d-inline-flex align-items-center justify-content-center">
-            <i class="bi bi-mortarboard-fill fs-5"></i>
-          </span>
+          <img
+            src="{{ url_for('static', filename='icons/logo.png') }}"
+            alt="{{ site_name }}"
+            class="brand-logo"
+          >
           <span class="fw-bold fs-5 text-dark d-none d-sm-inline">{{ site_name }}</span>
         </a>
 

@@ -1,10 +1,14 @@
 from datetime import datetime
 
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from sqlalchemy.orm import joinedload
 from flask_login import login_required, current_user
 
 from app import db
+from app.models.class_session import (
+    ClassSession,
+    ClassSessionStatus,
+)
 from app.utils.decorators import teacher_required
 from app.models.hire_request import HireRequest, HireStatus
 from app.models.student_profile import StudentProfile
@@ -233,3 +237,240 @@ def notifications():
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({"is_read": True})
     db.session.commit()
     return render_template("teacher/notifications.html", items=items)
+
+
+# ============================================================
+# CLASS SESSION CONTROL / LIVE TRAVEL
+# ============================================================
+
+def _teacher_owned_session(session_id):
+    """
+    Security boundary: a teacher may control only their own session.
+    """
+    profile = current_user.teacher_profile
+
+    return ClassSession.query.filter_by(
+        id=session_id,
+        teacher_id=profile.id,
+    ).first_or_404()
+
+
+def _auto_complete_expired_session(session):
+    """
+    Server-authoritative timer enforcement.
+
+    If an IN_PROGRESS session has reached its configured duration,
+    automatically mark it COMPLETED. Client-side timers are never trusted.
+    """
+    if session.status != ClassSessionStatus.IN_PROGRESS:
+        return False
+
+    if not session.timer_started_at:
+        return False
+
+    if not session.is_timer_finished:
+        return False
+
+    now = datetime.utcnow()
+
+    session.status = ClassSessionStatus.COMPLETED
+
+    if session.actual_completed_at is None:
+        session.actual_completed_at = now
+
+    db.session.commit()
+    return True
+
+
+@teacher_bp.route("/sessions/<int:session_id>/start-travel", methods=["POST"])
+@login_required
+@teacher_required
+def teacher_start_travel(session_id):
+    """
+    scheduled -> travelling
+
+    Starts server-side travel tracking for the teacher.
+    """
+    session = _teacher_owned_session(session_id)
+
+    if session.status != ClassSessionStatus.SCHEDULED:
+        return {
+            "error": "Session must be scheduled before travel can start.",
+            "status": session.status.value,
+        }, 409
+
+    now = datetime.utcnow()
+
+    session.status = ClassSessionStatus.TRAVELLING
+    session.teacher_started_travel_at = now
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "teacher_started_travel_at": now.isoformat(),
+    }, 200
+
+
+@teacher_bp.route("/sessions/<int:session_id>/location", methods=["POST"])
+@login_required
+@teacher_required
+def teacher_update_session_location(session_id):
+    """
+    Update the teacher's live location for an active travelling session.
+    """
+    session = _teacher_owned_session(session_id)
+
+    if session.status not in (
+        ClassSessionStatus.TRAVELLING,
+        ClassSessionStatus.ARRIVED,
+    ):
+        return {
+            "error": "Location can only be updated while travelling or arrived.",
+            "status": session.status.value,
+        }, 409
+
+    payload = request.get_json(silent=True) or {}
+
+    try:
+        latitude = float(payload.get("latitude"))
+        longitude = float(payload.get("longitude"))
+    except (TypeError, ValueError):
+        return {
+            "error": "Valid latitude and longitude are required."
+        }, 400
+
+    if not (-90 <= latitude <= 90):
+        return {"error": "Invalid latitude."}, 400
+
+    if not (-180 <= longitude <= 180):
+        return {"error": "Invalid longitude."}, 400
+
+    now = datetime.utcnow()
+
+    session.current_teacher_latitude = latitude
+    session.current_teacher_longitude = longitude
+    session.location_updated_at = now
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "latitude": latitude,
+        "longitude": longitude,
+        "location_updated_at": now.isoformat(),
+    }, 200
+
+
+@teacher_bp.route("/sessions/<int:session_id>/arrived", methods=["POST"])
+@login_required
+@teacher_required
+def teacher_mark_arrived(session_id):
+    """
+    travelling -> arrived
+    """
+    session = _teacher_owned_session(session_id)
+
+    if session.status != ClassSessionStatus.TRAVELLING:
+        return {
+            "error": "Session must be travelling before marking arrival.",
+            "status": session.status.value,
+        }, 409
+
+    now = datetime.utcnow()
+
+    session.status = ClassSessionStatus.ARRIVED
+    session.teacher_arrived_at = now
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "teacher_arrived_at": now.isoformat(),
+    }, 200
+
+
+@teacher_bp.route("/sessions/<int:session_id>/start", methods=["POST"])
+@login_required
+@teacher_required
+def teacher_start_class(session_id):
+    """
+    arrived -> in_progress
+
+    The server starts the authoritative class timer.
+    """
+    session = _teacher_owned_session(session_id)
+
+    if session.status != ClassSessionStatus.ARRIVED:
+        return {
+            "error": "Teacher must arrive before starting the class.",
+            "status": session.status.value,
+        }, 409
+
+    now = datetime.utcnow()
+
+    session.status = ClassSessionStatus.IN_PROGRESS
+    session.actual_started_at = now
+    session.timer_started_at = now
+
+    # Use the scheduled duration, never client supplied timer values.
+    duration = int(
+        (session.scheduled_end - session.scheduled_start).total_seconds()
+    )
+
+    if duration <= 0:
+        return {"error": "Invalid session duration."}, 409
+
+    session.timer_duration_seconds = duration
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "timer_started_at": now.isoformat(),
+        "timer_duration_seconds": session.timer_duration_seconds,
+        "remaining_seconds": session.remaining_seconds,
+    }, 200
+
+
+@teacher_bp.route("/sessions/<int:session_id>/complete", methods=["POST"])
+@login_required
+@teacher_required
+def teacher_complete_class(session_id):
+    """
+    in_progress -> completed
+
+    Completion time is always generated by the server.
+    """
+    session = _teacher_owned_session(session_id)
+
+    if session.status != ClassSessionStatus.IN_PROGRESS:
+        return {
+            "error": "Only an in-progress class can be completed.",
+            "status": session.status.value,
+        }, 409
+
+    now = datetime.utcnow()
+
+    # Completion is server-authoritative.
+    session.status = ClassSessionStatus.COMPLETED
+    session.actual_completed_at = now
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "actual_completed_at": now.isoformat(),
+        "duration_seconds": session.duration_seconds,
+        "remaining_seconds": session.remaining_seconds,
+    }, 200

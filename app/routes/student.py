@@ -1,6 +1,6 @@
 import re
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from sqlalchemy.orm import joinedload
@@ -23,6 +23,20 @@ from app.forms.marketplace_forms import (
 from app.services.geo_service import bounding_box, find_within_radius, subject_match_score
 from app.services.settings_service import get_search_radius_km
 from app.services.notification_service import notify
+from app.services.scheduling_service import create_class_session
+from app.services.availability_service import (
+    get_teacher_availability_for_date,
+    get_real_available_slots,
+)
+from app.services.slot_service import (
+    is_teacher_slot_free,
+)
+from app.models.class_session import (
+    ClassSession,
+    ClassSessionStatus,
+    SessionTeachingMode,
+    TravelMode,
+)
 
 student_bp = Blueprint("student", __name__, template_folder="../templates/student")
 
@@ -130,6 +144,205 @@ def teacher_search():
         is_student=current_user.is_authenticated and current_user.is_student,
     )
 
+
+@student_bp.route("/teachers/<int:teacher_id>/available-slots")
+@login_required
+@student_required
+def teacher_available_slots(teacher_id):
+    """
+    Return real bookable slots for a teacher.
+
+    The teacher's recurring availability is intersected with already
+    scheduled ClassSession records, so students only see slots that
+    can actually be booked.
+    """
+    teacher = TeacherProfile.query.get_or_404(teacher_id)
+
+    if teacher.status != TeacherStatus.APPROVED or not teacher.is_available:
+        return {"slots": [], "message": "Teacher is not currently available."}, 200
+
+    date_text = (request.args.get("date") or "").strip()
+
+    try:
+        requested_date = (
+            datetime.strptime(date_text, "%Y-%m-%d").date()
+            if date_text
+            else datetime.utcnow().date()
+        )
+    except ValueError:
+        return {"error": "Invalid date. Use YYYY-MM-DD."}, 400
+
+    duration = request.args.get("duration", 60, type=int)
+    step = request.args.get("step", 15, type=int)
+
+    duration = min(max(duration, 15), 240)
+    step = min(max(step, 5), 60)
+
+    slots = get_real_available_slots(
+        teacher_id=teacher.id,
+        requested_date=requested_date,
+        duration_minutes=duration,
+        step_minutes=step,
+    )
+
+    return {
+        "teacher_id": teacher.id,
+        "date": requested_date.isoformat(),
+        "duration_minutes": duration,
+        "step_minutes": step,
+        "slots": [
+            {
+                "start": slot["start"].isoformat(),
+                "end": slot["end"].isoformat(),
+                "start_time": slot["start"].strftime("%H:%M"),
+                "end_time": slot["end"].strftime("%H:%M"),
+            }
+            for slot in slots
+        ],
+    }
+
+
+@student_bp.route("/teachers/<int:teacher_id>/book-slot", methods=["POST"])
+@login_required
+@student_required
+def book_teacher_slot(teacher_id):
+    """
+    Atomically validate the requested occurrence and create a ClassSession.
+
+    A recurring teacher availability window is NOT itself a booking.
+    ClassSession is the actual occurrence that blocks the teacher.
+    """
+    profile = current_user.student_profile
+    teacher = TeacherProfile.query.get_or_404(teacher_id)
+
+    if teacher.status != TeacherStatus.APPROVED or not teacher.is_available:
+        return {"error": "Teacher is not currently available."}, 400
+
+    payload = request.get_json(silent=True) or {}
+
+    start_text = str(payload.get("scheduled_start") or "").strip()
+    end_text = str(payload.get("scheduled_end") or "").strip()
+
+    if not start_text or not end_text:
+        return {"error": "scheduled_start and scheduled_end are required."}, 400
+
+    try:
+        scheduled_start = datetime.fromisoformat(start_text.replace("Z", "+00:00"))
+        scheduled_end = datetime.fromisoformat(end_text.replace("Z", "+00:00"))
+
+        if scheduled_start.tzinfo:
+            scheduled_start = scheduled_start.replace(tzinfo=None)
+
+        if scheduled_end.tzinfo:
+            scheduled_end = scheduled_end.replace(tzinfo=None)
+    except ValueError:
+        return {"error": "Invalid datetime format."}, 400
+
+    if scheduled_end <= scheduled_start:
+        return {"error": "scheduled_end must be after scheduled_start."}, 400
+
+    duration_minutes = int(
+        (scheduled_end - scheduled_start).total_seconds() / 60
+    )
+
+    if duration_minutes < 15 or duration_minutes > 240:
+        return {"error": "Class duration must be between 15 and 240 minutes."}, 400
+
+    teaching_mode = str(
+        payload.get("teaching_mode") or "home"
+    ).strip().lower()
+
+    if teaching_mode not in ("home", "online"):
+        return {"error": "Invalid teaching_mode."}, 400
+
+    travel_mode = str(
+        payload.get("travel_mode") or (
+            "online" if teaching_mode == "online" else "bike"
+        )
+    ).strip().lower()
+
+    if travel_mode not in ("walking", "bike", "car", "online"):
+        return {"error": "Invalid travel_mode."}, 400
+
+    if teaching_mode == "online":
+        travel_mode = "online"
+
+    try:
+        # If a hire request is supplied, it MUST belong to the current
+        # student + selected teacher and must already be accepted.
+        hire_request_id = payload.get("hire_request_id")
+
+        if hire_request_id is not None:
+            try:
+                hire_request_id = int(hire_request_id)
+            except (TypeError, ValueError):
+                return {"error": "Invalid hire_request_id."}, 400
+
+            hire = HireRequest.query.filter_by(
+                id=hire_request_id,
+                student_id=profile.id,
+                teacher_id=teacher.id,
+            ).first()
+
+            if hire is None:
+                return {"error": "Invalid hire request."}, 403
+
+            if hire.status != HireStatus.ACCEPTED:
+                return {
+                    "error": "The hire request must be accepted before booking a class."
+                }, 409
+
+        if not is_teacher_slot_free(
+            teacher.id,
+            scheduled_start,
+            scheduled_end,
+            travel_buffer_minutes=0,
+        ):
+            return {
+                "error": "This teacher has already been booked for this time."
+            }, 409
+
+        session = create_class_session(
+            teacher_id=teacher.id,
+            student_id=profile.id,
+            hire_request_id=hire_request_id,
+            scheduled_start=scheduled_start,
+            duration_minutes=duration_minutes,
+            teaching_mode=teaching_mode,
+            travel_mode=travel_mode,
+            origin_latitude=payload.get("origin_latitude"),
+            origin_longitude=payload.get("origin_longitude"),
+            destination_latitude=payload.get("destination_latitude"),
+            destination_longitude=payload.get("destination_longitude"),
+            travel_buffer_minutes=int(
+                payload.get("travel_buffer_minutes") or 0
+            ),
+            notes=str(payload.get("notes") or "").strip()[:1000] or None,
+        )
+
+        db.session.commit()
+
+    except ValueError as exc:
+        db.session.rollback()
+        return {"error": str(exc)}, 409
+
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return {
+        "success": True,
+        "session_id": session.id,
+        "status": session.status.value,
+        "scheduled_start": session.scheduled_start.isoformat(),
+        "scheduled_end": session.scheduled_end.isoformat(),
+        "teaching_mode": session.teaching_mode.value
+        if hasattr(session.teaching_mode, "value")
+        else session.teaching_mode,
+        "travel_mode": session.travel_mode.value
+        if hasattr(session.travel_mode, "value")
+        else session.travel_mode,
+    }, 201
 
 @student_bp.route("/teachers/<int:teacher_id>/hire", methods=["POST"])
 @login_required
@@ -415,3 +628,128 @@ def notifications():
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({"is_read": True})
     db.session.commit()
     return render_template("student/notifications.html", items=items)
+
+
+# ============================================================
+# STUDENT LIVE CLASS / TEACHER LOCATION
+# ============================================================
+
+@student_bp.route("/sessions/<int:session_id>/status")
+@login_required
+@student_required
+def student_session_status(session_id):
+    """
+    Student can see only their own class session.
+
+    This endpoint exposes:
+      - teacher travel state
+      - live teacher coordinates
+      - arrival state
+      - server-authoritative class timer
+    """
+    profile = current_user.student_profile
+
+    session = ClassSession.query.filter_by(
+        id=session_id,
+        student_id=profile.id,
+    ).first_or_404()
+
+    # Server-authoritative timer enforcement.
+    # Never trust the student's browser countdown.
+    if (
+        session.status == ClassSessionStatus.IN_PROGRESS
+        and session.timer_started_at
+        and session.is_timer_finished
+    ):
+        session.status = ClassSessionStatus.COMPLETED
+
+        if session.actual_completed_at is None:
+            session.actual_completed_at = datetime.utcnow()
+
+        db.session.commit()
+
+    status = (
+        session.status.value
+        if hasattr(session.status, "value")
+        else str(session.status)
+    )
+
+    teaching_mode = (
+        session.teaching_mode.value
+        if hasattr(session.teaching_mode, "value")
+        else str(session.teaching_mode)
+    )
+
+    travel_mode = (
+        session.travel_mode.value
+        if hasattr(session.travel_mode, "value")
+        else str(session.travel_mode)
+    )
+
+    return {
+        "success": True,
+        "session": {
+            "id": session.id,
+            "teacher_id": session.teacher_id,
+            "student_id": session.student_id,
+            "status": status,
+
+            "scheduled_date": (
+                session.scheduled_date.isoformat()
+                if session.scheduled_date else None
+            ),
+            "scheduled_start": session.scheduled_start.isoformat(),
+            "scheduled_end": session.scheduled_end.isoformat(),
+
+            "teaching_mode": teaching_mode,
+            "travel_mode": travel_mode,
+
+            "teacher_started_travel_at": (
+                session.teacher_started_travel_at.isoformat()
+                if session.teacher_started_travel_at else None
+            ),
+
+            "teacher_arrived_at": (
+                session.teacher_arrived_at.isoformat()
+                if session.teacher_arrived_at else None
+            ),
+
+            "current_teacher_latitude":
+                session.current_teacher_latitude,
+
+            "current_teacher_longitude":
+                session.current_teacher_longitude,
+
+            "location_updated_at": (
+                session.location_updated_at.isoformat()
+                if session.location_updated_at else None
+            ),
+
+            "timer_started_at": (
+                session.timer_started_at.isoformat()
+                if session.timer_started_at else None
+            ),
+
+            "timer_duration_seconds":
+                session.timer_duration_seconds,
+
+            "duration_seconds":
+                session.duration_seconds,
+
+            "remaining_seconds":
+                session.remaining_seconds,
+
+            "is_timer_finished":
+                session.is_timer_finished,
+
+            "actual_started_at": (
+                session.actual_started_at.isoformat()
+                if session.actual_started_at else None
+            ),
+
+            "actual_completed_at": (
+                session.actual_completed_at.isoformat()
+                if session.actual_completed_at else None
+            ),
+        }
+    }, 200

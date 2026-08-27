@@ -96,6 +96,204 @@
 </div>
 {% endblock %}
 {% block extra_scripts %}
+<style>
+.smart-slot-picker{margin-top:1rem}
+.smart-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:.5rem}
+.smart-slot-btn{border:1px solid var(--bs-border-color);background:var(--bs-body-bg);border-radius:12px;padding:.55rem .4rem;font-size:.85rem}
+.smart-slot-btn:hover{border-color:var(--bs-primary);color:var(--bs-primary)}
+.smart-slot-btn:disabled{opacity:.6}
+.smart-slot-message{font-size:.82rem}
+</style>
+
+<script>
+(function () {
+  const cards = document.querySelectorAll('.teacher-card');
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function (c) {
+      return ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+      })[c];
+    });
+  }
+
+  cards.forEach(function(card) {
+    const form = card.querySelector('form[action*="hire_teacher"]');
+    if (!form) return;
+
+    const action = form.getAttribute('action') || '';
+    const match = action.match(/\/teachers\/(\d+)\/hire/);
+    if (!match) return;
+
+    const teacherId = match[1];
+
+    const box = document.createElement('div');
+    box.className = 'smart-slot-picker';
+    box.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-semibold">
+          <i class="bi bi-calendar2-check me-1"></i>Choose class time
+        </span>
+        <select class="form-select form-select-sm w-auto smart-duration">
+          <option value="60">60 min</option>
+          <option value="90">90 min</option>
+          <option value="120">120 min</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm w-100 rounded-pill smart-load-slots">
+        Show available slots
+      </button>
+      <div class="smart-slot-message text-muted mt-2"></div>
+      <div class="smart-slot-grid mt-2"></div>
+    `;
+
+    form.parentElement.insertBefore(box, form);
+
+    const loadBtn = box.querySelector('.smart-load-slots');
+    const duration = box.querySelector('.smart-duration');
+    const message = box.querySelector('.smart-slot-message');
+    const grid = box.querySelector('.smart-slot-grid');
+
+    async function loadSlots() {
+      loadBtn.disabled = true;
+      loadBtn.textContent = 'Loading…';
+      message.textContent = '';
+      grid.innerHTML = '';
+
+      try {
+        const params = new URLSearchParams({
+          duration_minutes: duration.value
+        });
+
+        const response = await fetch(
+          `/student/teachers/${teacherId}/available-slots?${params}`,
+          {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {'Accept': 'application/json'}
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Could not load slots');
+        }
+
+        const slots = Array.isArray(data.slots) ? data.slots : [];
+
+        if (!slots.length) {
+          message.textContent = 'No available slots found.';
+          return;
+        }
+
+        slots.forEach(function(slot) {
+          const start = slot.start || slot.scheduled_start;
+          const end = slot.end || slot.scheduled_end;
+
+          if (!start || !end) return;
+
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'smart-slot-btn';
+
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+
+          button.textContent =
+            startDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) +
+            ' – ' +
+            endDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+          button.addEventListener('click', async function() {
+            await bookSlot(start, end, button);
+          });
+
+          grid.appendChild(button);
+        });
+
+        message.textContent = 'Select a time to book this class.';
+      } catch (error) {
+        console.error(error);
+        message.textContent = error.message || 'Unable to load available slots.';
+      } finally {
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'Refresh available slots';
+      }
+    }
+
+    async function bookSlot(start, end, button) {
+      const original = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Booking…';
+
+      try {
+        const csrfInput = document.querySelector(
+          'input[name="csrf_token"]'
+        );
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        };
+
+        if (csrfInput) {
+          headers['X-CSRFToken'] = csrfInput.value;
+        }
+
+        const response = await fetch(
+          `/student/teachers/${teacherId}/book-slot`,
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: headers,
+            body: JSON.stringify({
+              scheduled_start: start,
+              scheduled_end: end,
+              duration_minutes: Number(duration.value)
+            })
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Booking failed');
+        }
+
+        message.innerHTML =
+          '<span class="text-success fw-semibold">' +
+          '<i class="bi bi-check-circle me-1"></i>' +
+          escapeHtml(data.message || 'Class booked successfully.') +
+          '</span>';
+
+        grid.innerHTML = '';
+
+        if (data.session && data.session.id) {
+          const info = document.createElement('div');
+          info.className = 'alert alert-success py-2 px-3 mt-2 small';
+          info.textContent = 'Class session #' + data.session.id + ' created.';
+          box.appendChild(info);
+        }
+      } catch (error) {
+        console.error(error);
+        message.innerHTML =
+          '<span class="text-danger">' +
+          escapeHtml(error.message || 'Booking failed.') +
+          '</span>';
+        button.disabled = false;
+        button.textContent = original;
+      }
+    }
+
+    loadBtn.addEventListener('click', loadSlots);
+    duration.addEventListener('change', function () {
+      if (grid.children.length) loadSlots();
+    });
+  });
+})();
+</script>
+
 <script>
 (function(){
   const lat=document.getElementById('searchLat'), lng=document.getElementById('searchLng');

@@ -19,6 +19,29 @@ class HireRequest(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey("teacher_profiles.id"), nullable=False, index=True)
 
     message = db.Column(db.String(1000), nullable=True)
+
+    # Requested actual class occurrence.
+    scheduled_start = db.Column(db.DateTime, nullable=True, index=True)
+    scheduled_end = db.Column(db.DateTime, nullable=True, index=True)
+
+    # Duration requested by the student.
+    class_duration_minutes = db.Column(
+        db.Integer,
+        nullable=True,
+        default=60,
+    )
+
+    # "online" or "home".
+    teaching_mode = db.Column(
+        db.String(20),
+        nullable=True,
+    )
+
+    # "walking", "bike", "car", or "online".
+    travel_mode = db.Column(
+        db.String(20),
+        nullable=True,
+    )
     status = db.Column(db.Enum(HireStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=HireStatus.PENDING, index=True)
     responded_at = db.Column(db.DateTime, nullable=True)
 
