@@ -1,3 +1,4 @@
+from app.services.google_oauth import init_google_oauth
 """
 Application factory.
 """
@@ -71,9 +72,11 @@ def create_app(config_name=None):
     from app.routes.admin import admin_bp
     from app.routes.api import api_bp
     from app.routes.chat import chat_bp
+    from app.services.google_oauth_routes import google_auth_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(google_auth_bp, url_prefix='/auth')
     app.register_blueprint(student_bp, url_prefix="/student")
     app.register_blueprint(teacher_bp, url_prefix="/teacher")
     app.register_blueprint(admin_bp, url_prefix="/admin")
@@ -88,6 +91,8 @@ def create_app(config_name=None):
         return {
             "site_name": get_setting("SITE_NAME", "LocalTutor"),
         }
+
+    init_google_oauth(app)
 
     return app
 

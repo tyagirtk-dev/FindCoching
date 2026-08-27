@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Choose Your Role — {{ site_name }}{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center py-4 py-md-5">
+
+  <div class="col-12 col-md-10 col-lg-8">
+
+    <div class="text-center mb-4 mb-md-5">
+
+      <span
+        class="brand-mark d-inline-flex align-items-center justify-content-center"
+        style="width:56px;height:56px;font-size:1.5rem;"
+      >
+        <i class="bi bi-google"></i>
+      </span>
+
+      <h3 class="fw-bold mt-3 mb-2">
+        Continue with Google
+      </h3>
+
+      <p class="text-muted mb-0">
+        How do you want to use {{ site_name }}?
+      </p>
+
+    </div>
+
+
+    <div class="row g-4">
+
+      <!-- =====================================================
+           STUDENT
+      ====================================================== -->
+
+      <div class="col-12 col-md-6">
+
+        <div class="card auth-card h-100 border-0 shadow-sm rounded-4 p-4">
+
+          <div
+            class="d-flex align-items-center justify-content-center rounded-circle mb-3 mx-auto"
+            style="width:64px;height:64px;background:var(--brand-light);color:var(--brand);"
+          >
+            <i class="bi bi-mortarboard-fill fs-3"></i>
+          </div>
+
+          <h5 class="fw-bold text-center mb-2">
+            I'm a Student
+          </h5>
+
+          <p class="text-muted small text-center mb-4">
+            Find trusted tutors nearby, hire teachers,
+            manage your classes and learn with ease.
+          </p>
+
+          <a
+              href="{{ url_for('google_auth.google_continue', role='student') }}"
+              class="btn btn-primary btn-lg w-100 rounded-pill">
+              <i class="bi bi-mortarboard-fill me-2"></i>
+              Continue as Student
+            </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- =====================================================
+           TEACHER
+      ====================================================== -->
+
+      <div class="col-12 col-md-6">
+
+        <div class="card auth-card h-100 border-0 shadow-sm rounded-4 p-4">
+
+          <div
+            class="d-flex align-items-center justify-content-center rounded-circle mb-3 mx-auto"
+            style="width:64px;height:64px;background:var(--brand-light);color:var(--brand);"
+          >
+            <i class="bi bi-person-workspace fs-3"></i>
+          </div>
+
+          <h5 class="fw-bold text-center mb-2">
+            I'm a Teacher
+          </h5>
+
+          <p class="text-muted small text-center mb-4">
+            Create your teaching profile, get discovered
+            by nearby students and manage your classes.
+          </p>
+
+          <a
+              href="{{ url_for('google_auth.google_continue', role='teacher') }}"
+              class="btn btn-outline-primary btn-lg w-100 rounded-pill">
+              <i class="bi bi-person-workspace me-2"></i>
+              Continue as Teacher
+            </a>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="text-center mt-4">
+
+      <a
+        href="{{ url_for('auth.login') }}"
+        class="text-muted small text-decoration-none"
+      >
+        <i class="bi bi-arrow-left me-1"></i>
+        Back to Login
+      </a>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

@@ -35,3 +35,11 @@ migration_backups/
 *.before_referral_slots
 *.before_referral_fix
 *~ 
+
+# Google OAuth temporary backups / audit artifacts
+.google_oauth_*/
+backups/
+*.before_google_*
+google_oauth_routes.py.before_import_fix_*
+oauth_db_before_migration_*.db
+google_oauth_audit.txt

@@ -31,6 +31,21 @@
           <a href="{{ url_for('auth.forgot_password') }}" class="fw-semibold">Forgot password?</a>
         </div>
         <button type="submit" class="btn btn-primary w-100 btn-lg">Log In</button>
+
+        <div class="position-relative my-4">
+          <hr>
+          <span class="position-absolute top-50 start-50 translate-middle bg-body px-3 text-muted small">
+            OR
+          </span>
+        </div>
+
+        <a
+          href="{{ url_for('google_auth.google_login') }}"
+          class="btn btn-outline-dark w-100 btn-lg d-flex align-items-center justify-content-center gap-2"
+        >
+          <i class="bi bi-google"></i>
+          Continue with Google
+        </a>
       </form>
       <hr>
       <p class="text-center small mb-0">
