@@ -1,3 +1,4 @@
+from app.security.url import safe_next_url
 from urllib.parse import urlparse
 
 from authlib.integrations.base_client import OAuthError
@@ -31,22 +32,9 @@ google_auth_bp = Blueprint(
 )
 
 
-def _safe_next_url(value):
-    if not value:
-        return None
+def _safe_next_url(target):
+    return safe_next_url(target, fallback=url_for("main.index"))
 
-    parsed = urlparse(value)
-
-    if parsed.scheme or parsed.netloc:
-        return None
-
-    if not value.startswith("/"):
-        return None
-
-    return value
-
-
-@google_auth_bp.get("/google")
 def google_login():
     """
     Start Google OpenID Connect login.

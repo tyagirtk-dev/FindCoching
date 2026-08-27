@@ -21,8 +21,52 @@ csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address)
 
 
+
+def _apply_security_headers(response):
+    """Apply baseline browser security headers."""
+
+    response.headers.setdefault(
+        "X-Content-Type-Options",
+        "nosniff",
+    )
+
+    response.headers.setdefault(
+        "X-Frame-Options",
+        "SAMEORIGIN",
+    )
+
+    response.headers.setdefault(
+        "Referrer-Policy",
+        "strict-origin-when-cross-origin",
+    )
+
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(self)",
+    )
+
+    # Conservative CSP compatible with the existing Bootstrap/Leaflet UI.
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'self'; "
+        "object-src 'none'; "
+        "img-src 'self' data: blob: https:; "
+        "style-src 'self' 'unsafe-inline' https:; "
+        "script-src 'self' 'unsafe-inline' https:; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self' https: wss:;",
+    )
+
+    return response
+
+
 def create_app(config_name=None):
     app = Flask(__name__)
+
+    app.after_request(_apply_security_headers)
 
     config_name = config_name or os.environ.get("FLASK_ENV", "development")
     from config import config_by_name

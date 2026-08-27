@@ -1,3 +1,4 @@
+from app.security.url import safe_next_url
 from datetime import datetime
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file
@@ -89,7 +90,12 @@ def suspend_teacher(teacher_id):
     AuditLog.log(current_user.id, "teacher_suspended", details=f"teacher_id={teacher_id}")
     db.session.commit()
     flash(f"{profile.user.name} suspended.", "warning")
-    return redirect(request.referrer or url_for("admin.dashboard"))
+    return redirect(
+        safe_next_url(
+            request.referrer,
+            fallback=url_for("admin.dashboard"),
+        )
+    )
 
 
 @admin_bp.route("/settings/smtp", methods=["GET", "POST"])

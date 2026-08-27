@@ -1,3 +1,4 @@
+from app.security.url import safe_next_url
 import hmac
 from datetime import datetime
 import json
@@ -360,7 +361,7 @@ def login():
         # CRITICAL-FIX: Validate 'next' URL to prevent open redirect (CWE-601)
         next_url = request.args.get("next", "").strip()
         if next_url and _is_safe_redirect_url(next_url):
-            return redirect(next_url)
+            return redirect(safe_next_url(next_url, fallback=url_for('main.index')))
 
         # Default redirects based on role
         if user.role == RoleEnum.SUPER_ADMIN:
