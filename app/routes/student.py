@@ -630,6 +630,49 @@ def notifications():
     return render_template("student/notifications.html", items=items)
 
 
+
+
+# ============================================================
+# STUDENT CLASS SESSION UI
+# ============================================================
+
+@student_bp.route("/sessions")
+@login_required
+@student_required
+def student_sessions():
+    profile = current_user.student_profile
+
+    sessions = (
+        ClassSession.query
+        .filter_by(student_id=profile.id)
+        .order_by(ClassSession.scheduled_start.asc())
+        .limit(100)
+        .all()
+    )
+
+    return render_template(
+        "student/sessions.html",
+        sessions=sessions,
+    )
+
+
+@student_bp.route("/sessions/<int:session_id>")
+@login_required
+@student_required
+def student_session_detail(session_id):
+    profile = current_user.student_profile
+
+    session = ClassSession.query.filter_by(
+        id=session_id,
+        student_id=profile.id,
+    ).first_or_404()
+
+    return render_template(
+        "student/session_detail.html",
+        session=session,
+    )
+
+
 # ============================================================
 # STUDENT LIVE CLASS / TEACHER LOCATION
 # ============================================================

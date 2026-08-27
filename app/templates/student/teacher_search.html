@@ -162,7 +162,7 @@
 
       try {
         const params = new URLSearchParams({
-          duration_minutes: duration.value
+          duration: duration.value
         });
 
         const response = await fetch(
@@ -269,10 +269,10 @@
 
         grid.innerHTML = '';
 
-        if (data.session && data.session.id) {
+        if (data.session_id) {
           const info = document.createElement('div');
           info.className = 'alert alert-success py-2 px-3 mt-2 small';
-          info.textContent = 'Class session #' + data.session.id + ' created.';
+          info.textContent = 'Class session #' + data.session_id + ' created.';
           box.appendChild(info);
         }
       } catch (error) {

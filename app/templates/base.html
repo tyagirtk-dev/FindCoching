@@ -84,6 +84,7 @@
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.dashboard') }}">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.hire_requests') }}">Requests</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.my_students') }}">Students</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.teacher_sessions') }}">Classes</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.mark_attendance') }}">Attendance</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('teacher.wallet') }}">Wallet</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('chat.inbox') }}">Messages</a></li>
@@ -91,7 +92,8 @@
               {% else %}
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.dashboard') }}">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.teacher_search') }}">Find Tutors</a></li>
-                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.my_hires') }}">My Classes</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.my_hires') }}">My Hires</a></li>
+                <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.student_sessions') }}">Live Classes</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.payments') }}">Payments</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('chat.inbox') }}">Messages</a></li>
                 <li class="nav-item"><a class="nav-link fw-medium" href="{{ url_for('student.profile') }}">Profile</a></li>

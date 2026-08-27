@@ -474,3 +474,132 @@ def teacher_complete_class(session_id):
         "duration_seconds": session.duration_seconds,
         "remaining_seconds": session.remaining_seconds,
     }, 200
+
+
+# ============================================================
+# TEACHER CLASS SESSION UI
+# ============================================================
+
+@teacher_bp.route("/sessions")
+@login_required
+@teacher_required
+def teacher_sessions():
+    profile = current_user.teacher_profile
+
+    sessions = (
+        ClassSession.query
+        .filter_by(teacher_id=profile.id)
+        .order_by(ClassSession.scheduled_start.asc())
+        .limit(100)
+        .all()
+    )
+
+    return render_template(
+        "teacher/sessions.html",
+        sessions=sessions,
+    )
+
+
+@teacher_bp.route("/sessions/<int:session_id>")
+@login_required
+@teacher_required
+def teacher_session_detail(session_id):
+    session = _teacher_owned_session(session_id)
+
+    return render_template(
+        "teacher/session_detail.html",
+        session=session,
+    )
+
+
+@teacher_bp.route("/sessions/<int:session_id>/status")
+@login_required
+@teacher_required
+def teacher_session_status(session_id):
+    session = _teacher_owned_session(session_id)
+
+    status = (
+        session.status.value
+        if hasattr(session.status, "value")
+        else str(session.status)
+    )
+
+    teaching_mode = (
+        session.teaching_mode.value
+        if hasattr(session.teaching_mode, "value")
+        else str(session.teaching_mode)
+    )
+
+    travel_mode = (
+        session.travel_mode.value
+        if hasattr(session.travel_mode, "value")
+        else str(session.travel_mode)
+    )
+
+    return {
+        "success": True,
+        "session": {
+            "id": session.id,
+            "status": status,
+            "teaching_mode": teaching_mode,
+            "travel_mode": travel_mode,
+
+            "scheduled_start": (
+                session.scheduled_start.isoformat()
+                if session.scheduled_start else None
+            ),
+
+            "scheduled_end": (
+                session.scheduled_end.isoformat()
+                if session.scheduled_end else None
+            ),
+
+            "teacher_started_travel_at": (
+                session.teacher_started_travel_at.isoformat()
+                if session.teacher_started_travel_at else None
+            ),
+
+            "teacher_arrived_at": (
+                session.teacher_arrived_at.isoformat()
+                if session.teacher_arrived_at else None
+            ),
+
+            "current_teacher_latitude":
+                session.current_teacher_latitude,
+
+            "current_teacher_longitude":
+                session.current_teacher_longitude,
+
+            "location_updated_at": (
+                session.location_updated_at.isoformat()
+                if session.location_updated_at else None
+            ),
+
+            "timer_started_at": (
+                session.timer_started_at.isoformat()
+                if session.timer_started_at else None
+            ),
+
+            "timer_duration_seconds":
+                session.timer_duration_seconds,
+
+            "duration_seconds":
+                session.duration_seconds,
+
+            "remaining_seconds":
+                session.remaining_seconds,
+
+            "is_timer_finished":
+                session.is_timer_finished,
+
+            "actual_started_at": (
+                session.actual_started_at.isoformat()
+                if session.actual_started_at else None
+            ),
+
+            "actual_completed_at": (
+                session.actual_completed_at.isoformat()
+                if session.actual_completed_at else None
+            ),
+        }
+    }, 200

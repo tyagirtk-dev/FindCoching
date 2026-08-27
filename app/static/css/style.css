@@ -654,3 +654,90 @@ h1, h2, h3, h4, h5, h6 { letter-spacing: -0.01em; font-weight: 700; color: var(-
         height: 43px;
     }
 }
+
+
+/* ============================================================
+   LIVE CLASS / SESSION UI
+   ============================================================ */
+
+.session-page{
+  max-width:1100px;
+  margin:0 auto;
+}
+
+.session-card{
+  transition:
+    transform .18s ease,
+    box-shadow .18s ease;
+}
+
+.session-card:hover{
+  transform:translateY(-2px);
+}
+
+.session-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:.35rem .65rem;
+  font-size:.72rem;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.status-scheduled{
+  background:rgba(13,110,253,.10);
+  color:#0d6efd;
+}
+
+.status-travelling{
+  background:rgba(13,202,240,.14);
+  color:#087990;
+}
+
+.status-arrived{
+  background:rgba(25,135,84,.12);
+  color:#198754;
+}
+
+.status-in_progress{
+  background:rgba(111,66,193,.12);
+  color:#6f42c1;
+}
+
+.status-completed{
+  background:rgba(25,135,84,.10);
+  color:#198754;
+}
+
+.status-cancelled{
+  background:rgba(220,53,69,.10);
+  color:#dc3545;
+}
+
+.status-disputed{
+  background:rgba(255,193,7,.16);
+  color:#997404;
+}
+
+#teacherMap{
+  min-height:280px;
+  background:#eef2f7;
+}
+
+.session-page .leaflet-container{
+  font-family:inherit;
+}
+
+@media (max-width:575.98px){
+
+  .session-page{
+    width:100%;
+  }
+
+  #teacherMap{
+    height:300px !important;
+  }
+
+}
